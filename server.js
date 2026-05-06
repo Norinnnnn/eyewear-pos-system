@@ -61,6 +61,19 @@ const upload = multer({ storage });
 
 const DB_NAME = process.env.DB_NAME || "eyewear_inventory";
 
+const sslConfig = {};
+const caPath = path.join(__dirname, "ca.pem");
+
+if (fs.existsSync(caPath)) {
+  console.log("SSL Certificate found as file, enabling SSL connection.");
+  sslConfig.ca = fs.readFileSync(caPath);
+} else if (process.env.DB_SSL_CA) {
+  console.log("SSL Certificate found in environment variable, enabling SSL connection.");
+  sslConfig.ca = process.env.DB_SSL_CA;
+} else {
+  console.warn("WARNING: SSL Certificate not found. Attempting connection without it.");
+}
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST || "127.0.0.1",
   port: parseInt(process.env.DB_PORT, 10) || 3306,
@@ -70,9 +83,7 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  ssl: {
-    ca: fs.readFileSync(path.join(__dirname, "ca.pem")),
-  },
+  ssl: Object.keys(sslConfig).length > 0 ? sslConfig : (process.env.DB_HOST ? { rejectUnauthorized: false } : null),
 });
 
 async function createDatabaseIfNotExists() {
@@ -82,9 +93,7 @@ async function createDatabaseIfNotExists() {
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASSWORD || "",
     multipleStatements: true,
-    ssl: {
-      ca: fs.readFileSync(path.join(__dirname, "ca.pem")),
-    },
+    ssl: Object.keys(sslConfig).length > 0 ? sslConfig : (process.env.DB_HOST ? { rejectUnauthorized: false } : null),
   });
   await connection.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
   await connection.end();
@@ -498,9 +507,5 @@ initializeDatabase().then(() => {
   app.listen(port, "0.0.0.0", () => console.log(`Server running at http://0.0.0.0:${port} - RESTARTED_${Date.now()}`));
 }).catch(e => { 
   console.error("DATABASE INITIALIZATION ERROR:", e);
-  // Don't exit immediately, let Express start so we can see logs
   app.listen(port, "0.0.0.0", () => console.log(`Server running in ERROR MODE at http://0.0.0.0:${port}`));
 });
-ase().then(() => {
-  app.listen(port, () => console.log(`Server running at http://localhost:${port} - RESTARTED_${Date.now()}`));
-}).catch(e => { console.error(e); process.exit(1); });
