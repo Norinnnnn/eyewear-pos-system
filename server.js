@@ -70,6 +70,9 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  ssl: {
+    ca: fs.readFileSync(path.join(__dirname, "ca.pem")),
+  },
 });
 
 async function createDatabaseIfNotExists() {
@@ -79,6 +82,9 @@ async function createDatabaseIfNotExists() {
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASSWORD || "",
     multipleStatements: true,
+    ssl: {
+      ca: fs.readFileSync(path.join(__dirname, "ca.pem")),
+    },
   });
   await connection.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
   await connection.end();
