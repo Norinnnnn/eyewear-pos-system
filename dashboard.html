@@ -1,0 +1,83 @@
+<script>
+  // เช็คก่อนโหลดหน้าเลย
+  const token = localStorage.getItem("token");
+  if (!token) {
+    window.location.replace("/login.html"); // replace ทำให้กด back ไม่ได้
+  }
+</script>
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POS-SYSTEM-v103-FIXED</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="dashboard.css?v=103" />
+</head>
+<body>
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <img src="png.png" alt="Shop Logo" class="sidebar-logo">
+      <h2>ระบบจัดการคลังสินค้า</h2>
+    </div>
+    
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-page="home">
+        <i class="fas fa-chart-line"></i> แดชบอร์ด
+      </button>
+      <button class="nav-item" data-page="pos">
+        <i class="fas fa-shopping-cart"></i> POS ขาย
+      </button>
+      <button class="nav-item" data-page="inventory">
+        <i class="fas fa-box"></i> คลังสินค้า
+      </button>
+      <button class="nav-item" data-page="reports">
+        <i class="fas fa-file-invoice-dollar"></i> รายงาน
+      </button>
+      <button class="nav-item admin-only" data-page="users" style="display:none;">
+        <i class="fas fa-users-cog"></i> จัดการผู้ใช้
+      </button>
+      <button class="nav-item admin-only" data-page="promotions" style="display:none;">
+        <i class="fas fa-tags"></i> โปรโมชั่น
+      </button>
+      <button class="nav-item" data-page="customers">
+        <i class="fas fa-user-friends"></i> จัดการลูกค้า
+      </button>
+
+    </nav>
+    
+    <div class="sidebar-footer">
+      <div id="user-info"></div>
+      <button id="logout-btn" class="logout-btn">ออกจากระบบ</button>
+    </div>
+  </div>
+  
+  <div class="main-panel">
+    <div class="topbar">
+      <div>
+        <h1 id="page-title">แดชบอร์ด</h1>
+        <p id="page-subtitle">ภาพรวมระบบร้านแว่นตาอานนท์</p>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-secondary" onclick="location.reload()">Refresh</button>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div id="home" class="page active"></div>
+      <div id="pos" class="page"></div>
+      <div id="inventory" class="page"></div>
+      <div id="reports" class="page"></div>
+      <div id="users" class="page"></div>
+      <div id="promotions" class="page"></div>
+      <div id="customers" class="page"></div>
+    </div>
+  </div>
+  
+  <div id="toast-container"></div>
+  <!-- PDF Generation Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="dashboard.js?v=103"></script>
+</body>
+</html>

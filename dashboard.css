@@ -1,0 +1,720 @@
+@import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap'); /* นำเข้า font Prompt จาก Google Fonts สำหรับภาษาไทย */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+} /* รีเซ็ต margin, padding และใช้ box-sizing ให้ทุก element */
+
+:root {
+  --bg-primary: #ffffff; /* สีพื้นหลังหลัก (สีขาว) */
+  --bg-secondary: #f2efff; /* สีพื้นหลังรอง (สีม่วงอ่อน) */
+  --accent-purple: #7c3aed; /* สีม่วงหลักสำหรับปุ่มและลิงก์ */
+  --accent-soft: #f5f3ff; /* สีม่วงอ่อนสำหรับ hover */
+  --text-dark: #111827; /* สีข้อความหลัก (สีดำ) */
+  --text-muted: #4b5563; /* สีข้อความรอง (สีเทา) */
+  --border: #e5e7eb; /* สีเส้นขอบ */
+  --shadow: 0 24px 50px rgba(15, 23, 42, 0.08); /* เงาเบา */
+} /* กำหนดตัวแปรสีหลักของธีม */
+
+html, body {
+  min-height: 100%;
+} /* ให้ html และ body สูงเต็มหน้าจอ */
+
+body {
+  font-family: 'Prompt', 'Segoe UI', sans-serif; /* ใช้ font Prompt ก่อน ถ้าไม่มีใช้ Segoe UI */
+  background: linear-gradient(180deg, #f7f3ff 0%, #f8fafc 100%); /* พื้นหลังไล่สีม่วงอ่อน */
+  color: var(--text-dark); /* สีข้อความหลัก */
+  display: flex; /* ใช้ flexbox */
+  min-height: 100vh; /* สูงเต็ม viewport */
+} /* สไตล์พื้นฐานของ body */
+
+.sidebar {
+  width: 280px; /* ความกว้าง sidebar 280px */
+  background: linear-gradient(180deg, #7c3aed 0%, #5b21b6 100%); /* พื้นหลังไล่สีม่วง */
+  color: #ffffff; /* สีข้อความขาว */
+  display: flex; /* ใช้ flexbox */
+  flex-direction: column; /* จัดเรียงแนวตั้ง */
+  padding: 32px 20px; /* ช่องว่างภายใน */
+  gap: 24px; /* ช่องว่างระหว่าง element */
+} /* สไตล์ sidebar ทางซ้าย */
+
+.sidebar-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 15px;
+}
+
+.sidebar-logo {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  background: white;
+  padding: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar-header h2 {
+  font-size: 1.35rem; /* ขนาด font */
+  font-weight: 700; /* หนา */
+  margin-bottom: 8px; /* ช่องว่างล่าง */
+} /* หัวข้อใน sidebar */
+
+.sidebar-nav {
+  flex: 1; /* ขยายเต็มพื้นที่ */
+  display: flex; /* ใช้ flexbox */
+  flex-direction: column; /* จัดเรียงแนวตั้ง */
+  gap: 0.85rem; /* ช่องว่างระหว่างเมนู */
+} /* เมนูนำทางใน sidebar */
+
+.nav-item {
+  background: rgba(255, 255, 255, 0.08); /* พื้นหลังโปร่งใส */
+  border: 1px solid rgba(255, 255, 255, 0.12); /* เส้นขอบโปร่งใส */
+  color: #f8f8ff; /* สีข้อความ */
+  padding: 14px 18px; /* ช่องว่างภายใน */
+  border-radius: 16px; /* มุมโค้ง */
+  cursor: pointer; /* เคอร์เซอร์มือ */
+  font-size: 0.98rem; /* ขนาด font */
+  transition: all 0.25s ease; /* แอนิเมชัน */
+  text-align: left; /* จัดข้อความซ้าย */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.nav-item i {
+  width: 20px;
+  text-align: center;
+  font-size: 1.1rem;
+} /* สไตล์เมนูแต่ละอัน */
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.18); /* พื้นหลังโปร่งใสมากขึ้นเมื่อ hover */
+  transform: translateX(2px); /* เลื่อนขวาเล็กน้อย */
+} /* เอฟเฟกต์ hover */
+
+.nav-item.active {
+  background: #ffffff; /* พื้นหลังขาว */
+  color: #5b21b6; /* สีข้อความม่วงเข้ม */
+  border-color: transparent; /* ไม่มีเส้นขอบ */
+  box-shadow: 0 12px 18px rgba(124, 58, 237, 0.18); /* เงา */
+} /* สไตล์เมนูที่เลือก */
+
+.sidebar-footer {
+  padding-top: 14px; /* ช่องว่างบน */
+  border-top: 1px solid rgba(255, 255, 255, 0.18); /* เส้นแบ่งบน */
+} /* ส่วนท้าย sidebar */
+
+#user-info {
+  font-size: 0.95rem; /* ขนาด font */
+  color: rgba(255, 255, 255, 0.85); /* สีข้อความขาวโปร่งใส */
+  margin-bottom: 12px; /* ช่องว่างล่าง */
+} /* ข้อมูลผู้ใช้ */
+
+.logout-btn {
+  width: 100%; /* กว้างเต็ม */
+  padding: 12px 16px; /* ช่องว่างภายใน */
+  background: rgba(255, 255, 255, 0.15); /* พื้นหลังโปร่งใส */
+  border: 1px solid rgba(255, 255, 255, 0.2); /* เส้นขอบโปร่งใส */
+  color: #ffffff; /* สีข้อความขาว */
+  border-radius: 14px; /* มุมโค้ง */
+  cursor: pointer; /* เคอร์เซอร์มือ */
+  font-weight: 700; /* หนา */
+  transition: transform 0.2s ease, background 0.2s ease; /* แอนิเมชัน */
+} /* ปุ่มออกจากระบบ */
+
+.logout-btn:hover {
+  transform: translateY(-1px); /* เลื่อนขึ้นเล็กน้อย */
+  background: rgba(255, 255, 255, 0.24); /* พื้นหลังโปร่งใสมากขึ้น */
+} /* เอฟเฟกต์ hover ปุ่มออกจากระบบ */
+
+.main-panel {
+  flex: 1; /* ขยายเต็มพื้นที่เหลือ */
+  display: flex; /* ใช้ flexbox */
+  flex-direction: column; /* จัดเรียงแนวตั้ง */
+  min-height: 100vh; /* สูงเต็ม viewport */
+  min-width: 0; /* ป้องกัน overflow */
+  background: linear-gradient(180deg, #f8f5ff 0%, #ffffff 25%, #ffffff 100%); /* พื้นหลังไล่สี */
+  padding: 0 32px; /* จัดกรอบเนื้อหาให้ตรงกันทั้งหน้า */
+} /* พื้นที่หลักทางขวา */
+
+.topbar {
+  height: 70px; /* ความสูง 70px */
+  display: flex; /* ใช้ flexbox */
+  align-items: center; /* จัดกลางแนวตั้ง */
+  justify-content: space-between; /* ช่องว่างระหว่าง element */
+  padding: 0; /* ใช้ padding จาก main-panel */
+  background: #ffffff; /* พื้นหลังขาว */
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9); /* เส้นขอบล่าง */
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05); /* เงาเบา */
+} /* แถบด้านบน */
+
+.topbar h1 {
+  font-size: 1.55rem; /* ขนาด font */
+  color: var(--text-dark); /* สีข้อความ */
+} /* หัวข้อใน topbar */
+
+.topbar p {
+  color: var(--text-muted); /* สีข้อความรอง */
+  margin-top: 4px; /* ช่องว่างบน */
+  font-size: 0.95rem; /* ขนาด font */
+} /* คำอธิบายใน topbar */
+
+.topbar-actions button {
+  margin-left: 12px; /* ช่องว่างซ้าย */
+} /* ปุ่มใน topbar */
+
+.main-content {
+  flex: 1; /* ขยายเต็มพื้นที่ */
+  padding: 24px 0 32px; /* ให้พื้นที่บน/ล่าง และใช้ padding ด้านข้างจาก main-panel */
+  overflow-y: auto; /* เลื่อนแนวตั้งได้ */
+  background: transparent; /* พื้นหลังโปร่งใส */
+} /* เนื้อหาหลัก */
+
+.page {
+  display: none !important; /* ซ่อนทุกหน้าเริ่มต้น */
+  opacity: 0; /* โปร่งใส */
+  visibility: hidden; /* ไม่ให้แสดง */
+  transform: translateY(10px); /* เลื่อนลงเล็กน้อย */
+  transition: opacity 0.3s ease, transform 0.3s ease; /* แอนิเมชัน */
+} /* สไตล์หน้าแต่ละหน้า */
+
+.page.active {
+  display: block !important; /* แสดงหน้าเดียว */
+  visibility: visible; /* เปิดการมองเห็น */
+  opacity: 1; /* ไม่โปร่งใส */
+  transform: translateY(0); /* ตำแหน่งปกติ */
+} /* สไตล์หน้าที่เลือก */
+
+.empty-state {
+  display: grid; /* ใช้ grid */
+  place-items: center; /* จัดกลาง */
+  min-height: 320px; /* ความสูงขั้นต่ำ */
+  padding: 40px 20px; /* ช่องว่างภายใน */
+} /* สถานะว่างเปล่า */
+
+.empty-card {
+  text-align: center; /* จัดข้อความกลาง */
+  background: #ffffff; /* พื้นหลังขาว */
+  border: 1px solid #ede9fe; /* เส้นขอบสีม่วงอ่อน */
+  border-radius: 24px; /* มุมโค้ง */
+  padding: 28px; /* ช่องว่างภายใน */
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05); /* เงา */
+} /* การ์ดว่างเปล่า */
+
+.empty-card h2 {
+  margin-bottom: 12px; /* ช่องว่างล่าง */
+  color: var(--text-dark); /* สีข้อความ */
+} /* หัวข้อใน empty-card */
+
+.empty-card p {
+  color: var(--text-muted); /* สีข้อความรอง */
+  line-height: 1.7; /* ความสูงบรรทัด */
+} /* ข้อความใน empty-card */
+
+.dashboard-grid {
+  display: grid; /* ใช้ grid */
+  grid-template-columns: repeat(4, minmax(0, 1fr)); /* 4 คอลัมน์ */
+  gap: 24px; /* ช่องว่าง */
+  margin-bottom: 24px; /* ช่องว่างล่าง */
+} /* กริดแดชบอร์ด */
+
+.metric-card,
+.card {
+  background: var(--bg-primary); /* พื้นหลังขาว */
+  border: 1px solid #f3efff; /* เส้นขอบสีม่วงอ่อน */
+  border-radius: 16px; /* มุมโค้ง */
+  padding: 24px; /* ช่องว่างภายใน */
+  box-shadow: var(--shadow); /* เงา */
+} /* สไตล์การ์ด */
+
+.metric-card {
+  position: relative; /* ตำแหน่งสัมพัทธ์ */
+} /* การ์ดเมตริก */
+
+.metric-top {
+  display: flex; /* ใช้ flexbox */
+  justify-content: space-between; /* ช่องว่างระหว่าง */
+  align-items: center; /* จัดกลางแนวตั้ง */
+  gap: 16px; /* ช่องว่าง */
+  margin-bottom: 18px; /* ช่องว่างล่าง */
+} /* ส่วนบนของ metric-card */
+
+.metric-card h3 {
+  color: var(--text-muted); /* สีข้อความรอง */
+  font-size: 0.95rem; /* ขนาด font */
+  margin-bottom: 0; /* ไม่มีช่องว่างล่าง */
+} /* หัวข้อใน metric-card */
+
+.metric-card .value {
+  font-size: 2rem; /* ขนาด font ใหญ่ */
+  font-weight: 700; /* หนา */
+  color: var(--text-dark); /* สีข้อความหลัก */
+} /* ค่าตัวเลขใน metric-card */
+
+.card h2 {
+  font-size: 1.2rem; /* ขนาด font */
+  margin-bottom: 18px; /* ช่องว่างล่าง */
+  color: var(--text-dark); /* สีข้อความหลัก */
+} /* หัวข้อใน card */
+
+.table-wrap {
+  overflow-x: auto; /* เลื่อนแนวนอนได้ */
+} /* wrapper ตาราง */
+
+table {
+  width: 100%; /* กว้างเต็ม */
+  border-collapse: collapse; /* รวมเส้นขอบ */
+  min-width: 720px; /* ความกว้างขั้นต่ำ */
+  background: #ffffff; /* พื้นหลังขาว */
+  border-radius: 18px; /* มุมโค้ง */
+  overflow: hidden; /* ซ่อน overflow */
+} /* สไตล์ตาราง */
+
+th, td {
+  padding: 18px 16px; /* ช่องว่างภายใน */
+  border-bottom: 1px solid #eef2ff; /* เส้นขอบล่าง */
+} /* เซลล์ตาราง */
+
+th {
+  color: #4b5563; /* สีข้อความเทา */
+  font-weight: 700; /* หนา */
+  background: #f5f3ff; /* พื้นหลังสีม่วงอ่อน */
+} /* หัวตาราง */
+
+tr:nth-child(even) {
+  background: #f8f5ff; /* พื้นหลังสีม่วงอ่อนสำหรับแถวคู่ */
+} /* แถวคู่ */
+
+tr:hover {
+  background: #eef2ff; /* พื้นหลังสีม่วงอ่อนเมื่อ hover */
+} /* เอฟเฟกต์ hover แถว */
+
+.alert-item {
+  padding: 18px 20px; /* ช่องว่างภายใน */
+  background: #faf5ff; /* พื้นหลังสีม่วงอ่อน */
+  border-left: 4px solid var(--accent-purple); /* เส้นขอบซ้ายสีม่วง */
+  border-radius: 14px; /* มุมโค้ง */
+  margin-bottom: 16px; /* ช่องว่างล่าง */
+  color: #5b21b6; /* สีข้อความม่วงเข้ม */
+} /* รายการแจ้งเตือน */
+
+.grid {
+  display: grid; /* ใช้ grid */
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* คอลัมน์ปรับอัตโนมัติ */
+  gap: 18px; /* ช่องว่าง */
+  margin-bottom: 18px; /* ช่องว่างล่าง */
+} /* กริดทั่วไป */
+
+label {
+  display: flex; /* ใช้ flexbox */
+  flex-direction: column; /* จัดเรียงแนวตั้ง */
+  gap: 8px; /* ช่องว่าง */
+  font-size: 0.95rem; /* ขนาด font */
+  color: var(--text-muted); /* สีข้อความรอง */
+} /* สไตล์ label */
+
+input, select {
+  padding: 14px 16px; /* ช่องว่างภายใน */
+  border: 1px solid #e5e7eb; /* เส้นขอบ */
+  border-radius: 14px; /* มุมโค้ง */
+  background: #ffffff; /* พื้นหลังขาว */
+  color: #111827; /* สีข้อความดำเข้ม */
+  font-size: 1rem; /* ขนาด font */
+  width: 100%;
+} /* สไตล์ input และ select */
+
+input:focus, select:focus {
+  outline: none; /* ไม่มี outline */
+  border-color: var(--accent-purple); /* เส้นขอบสีม่วง */
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12); /* เงา */
+} /* เอฟเฟกต์ focus */
+
+button {
+  padding: 14px 18px; /* ช่องว่างภายใน */
+  background: var(--accent-purple); /* พื้นหลังสีม่วง */
+  color: white; /* สีข้อความขาว */
+  border: none; /* ไม่มีเส้นขอบ */
+  border-radius: 12px; /* มุมโค้ง */
+  cursor: pointer; /* เคอร์เซอร์มือ */
+  font-weight: 700; /* หนา */
+  transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease; /* แอนิเมชัน */
+} /* สไตล์ปุ่มหลัก */
+
+button:hover {
+  transform: scale(1.02); /* ขยายเล็กน้อย */
+  background: #5b21b6; /* พื้นหลังม่วงเข้ม */
+} /* เอฟเฟกต์ hover ปุ่ม */
+
+.btn-secondary {
+  background: var(--bg-primary); /* พื้นหลังขาว */
+  color: var(--accent-purple); /* สีข้อความม่วง */
+  border: 1px solid var(--accent-purple); /* เส้นขอบสีม่วง */
+} /* สไตล์ปุ่มรอง */
+
+..btn-secondary:hover {
+  background: var(--accent-soft); /* พื้นหลังสีม่วงอ่อน */
+} /* เอฟเฟกต์ hover ปุ่มรอง */
+
+.btn-primary {
+  padding: 14px 18px; /* ช่องว่างภายใน */
+  background: var(--accent-purple); /* พื้นหลังม่วง */
+  color: white; /* สีข้อความขาว */
+  border: none; /* ไม่มีเส้นขอบ */
+  border-radius: 12px; /* มุมโค้ง */
+  cursor: pointer; /* เคอร์เซอร์มือ */
+  font-weight: 700; /* หนา */
+  transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+} /* สไตล์ปุ่มหลัก */
+
+.btn-primary:hover {
+  transform: scale(1.02); /* ขยายเล็กน้อย */
+  background: #5b21b6; /* พื้นหลังม่วงเข้ม */
+} /* เอฟเฟกต์ hover ปุ่ม primary */
+
+.pos-layout {
+  display: grid; /* ใช้ grid */
+  grid-template-columns: 1.8fr 1fr; /* 2 คอลัมน์ */
+  gap: 24px; /* ช่องว่าง */
+} /* เลย์เอาต์ POS */
+
+.pos-layout .card {
+  border-radius: 20px; /* มุมโค้ง */
+} /* การ์ดใน POS */
+
+.cart-item {
+  background: #f5f3ff; /* พื้นหลังสีม่วงอ่อน */
+  border-radius: 16px; /* มุมโค้ง */
+  padding: 16px; /* ช่องว่างภายใน */
+  margin-bottom: 12px; /* ช่องว่างล่าง */
+  display: flex; /* ใช้ flexbox */
+  justify-content: space-between; /* ช่องว่างระหว่าง */
+  align-items: center; /* จัดกลางแนวตั้ง */
+} /* รายการในตะกร้า */
+
+.product-thumb {
+  width: 68px; /* ความกว้าง */
+  height: 68px; /* ความสูง */
+  object-fit: cover; /* ปรับภาพ */
+  border-radius: 18px; /* มุมโค้ง */
+  border: 1px solid #ede9fe; /* เส้นขอบ */
+} /* รูปสินค้าใหญ่ */
+
+.product-thumb-sml {
+  width: 48px; /* ความกว้าง */
+  height: 48px; /* ความสูง */
+  object-fit: cover; /* ปรับภาพ */
+  border-radius: 16px; /* มุมโค้ง */
+  border: 1px solid #ede9fe; /* เส้นขอบ */
+} /* รูปสินค้าเล็ก */
+
+.cart-total {
+  background: #f5f3ff; /* พื้นหลังสีม่วงอ่อน */
+  color: var(--text-dark); /* สีข้อความ */
+  border-radius: 20px; /* มุมโค้ง */
+  padding: 20px; /* ช่องว่างภายใน */
+  font-size: 1.15rem; /* ขนาด font */
+  font-weight: 700; /* หนา */
+  border: 1px solid #ece6ff; /* เส้นขอบ */
+} /* รวมราคาตะกร้า */
+
+.status-badge {
+  display: inline-flex; /* ใช้ flexbox inline */
+  align-items: center; /* จัดกลางแนวตั้ง */
+  gap: 0.35rem; /* ช่องว่าง */
+  padding: 8px 12px; /* ช่องว่างภายใน */
+  border-radius: 999px; /* มุมโค้งกลม */
+  font-size: 0.85rem; /* ขนาด font */
+} /* แบดจ์สถานะ */
+  font-weight: 700; /* หนา */
+}
+
+.status-in-stock {
+  background: #f5f3ff; /* พื้นหลังสีม่วงอ่อน */
+  color: #6d28d9; /* สีข้อความม่วงเข้ม */
+} /* สถานะมีสินค้า */
+
+.status-low-stock {
+  background: #fff7ed; /* พื้นหลังสีส้มอ่อน */
+  color: #c2410c; /* สีข้อความส้มเข้ม */
+} /* สถานะสินค้าใกล้หมด */
+
+.icon-circle {
+  width: 48px; /* ความกว้าง */
+  height: 48px; /* ความสูง */
+  border-radius: 16px; /* มุมโค้ง */
+  background: #f5f3ff; /* พื้นหลังสีม่วงอ่อน */
+  display: grid; /* ใช้ grid */
+  place-items: center; /* จัดกลาง */
+  color: var(--accent-purple); /* สีไอคอน */
+  font-size: 1.1rem; /* ขนาด font */
+} /* วงกลมไอคอน */
+
+/* Modal Styles */ /* สไตล์ modal popup */
+@keyframes fadeIn { /* แอนิเมชัน fade in */
+  from {
+    opacity: 0; /* จากโปร่งใส */
+  }
+  to {
+    opacity: 1; /* เป็นทึบ */
+  }
+}
+
+@keyframes slideUp { /* แอนิเมชัน slide up */
+  from {
+    transform: translateY(40px); /* จากเลื่อนลง */
+    opacity: 0; /* และโปร่งใส */
+  }
+  to {
+    transform: translateY(0); /* เลื่อนขึ้น */
+    opacity: 1; /* และทึบ */
+  }
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
+  overflow-y: auto;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 24px;
+  width: min(100%, 800px);
+  max-width: 100%;
+  max-height: calc(100vh - 64px);
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  margin: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--border);
+  background: #fafafa;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: var(--text-dark);
+  font-weight: 700;
+}
+
+.modal-close {
+  background: none; /* ไม่มีพื้นหลัง */
+  border: none; /* ไม่มีเส้นขอบ */
+  font-size: 1.5rem; /* ขนาด font */
+  cursor: pointer; /* เคอร์เซอร์มือ */
+  color: var(--text-muted); /* สีข้อความ */
+  padding: 8px; /* ช่องว่างภายใน */
+  transition: color 0.2s ease; /* แอนิเมชันสี */
+} /* ปุ่มปิด modal */
+
+.modal-close:hover {
+  color: var(--text-dark); /* สีข้อความเข้มเมื่อ hover */
+} /* เอฟเฟกต์ hover ปุ่มปิด */
+
+.modal-footer {
+  display: flex; /* ใช้ flexbox */
+  gap: 10px; /* ช่องว่างระหว่างปุ่ม */
+  justify-content: flex-end; /* จัดขวา */
+  padding: 10px 16px; /* ช่องว่างภายใน */
+  border-top: 1px solid var(--border); /* เส้นขอบบน */
+  flex-shrink: 0; /* ไม่ย่อ */
+} /* ท้าย modal */
+
+#product-form {
+  display: flex; /* ใช้ flexbox */
+  flex-direction: column; /* จัดเรียงแนวตั้ง */
+  flex: 1; /* ขยายเต็ม */
+  overflow-y: auto; /* เลื่อนแนวตั้งได้ */
+  max-height: calc(100vh - 220px); /* ความสูงสูงสุด */
+} /* ฟอร์มเพิ่มสินค้า */
+
+#product-form .grid {
+  display: grid; /* ใช้ grid */
+  grid-template-columns: repeat(2, minmax(160px, 1fr)); /* 2 คอลัมน์ */
+  gap: 10px; /* ช่องว่าง */
+  padding: 14px 16px 8px; /* ช่องว่างภายใน */
+  margin-bottom: 0; /* ไม่มีช่องว่างล่าง */
+} /* กริดในฟอร์ม */
+
+#product-form label {
+  display: flex; /* ใช้ flexbox */
+  flex-direction: column; /* จัดเรียงแนวตั้ง */
+  gap: 3px; /* ช่องว่างเล็ก */
+  font-size: 0.85rem; /* ขนาด font */
+  font-weight: 500; /* หนา */
+  color: var(--text-dark); /* สีข้อความ */
+  min-width: 0; /* ป้องกัน overflow จาก flex */
+} /* label ในฟอร์ม */
+
+#product-form input[type="text"],
+#product-form input[type="number"],
+#product-form input[type="file"] {
+  padding: 8px 10px; /* ช่องว่างภายใน */
+  border: 1.5px solid var(--border); /* เส้นขอบ */
+  border-radius: 8px; /* มุมโค้ง */
+  font-family: inherit; /* ใช้ font เดียวกัน */
+  font-size: 0.9rem; /* ขนาด font */
+  transition: all 0.2s ease; /* แอนิเมชัน */
+} /* input ในฟอร์ม */
+
+#product-form input[type="text"]:focus,
+#product-form input[type="number"]:focus,
+#product-form input[type="file"]:focus {
+  outline: none; /* ไม่มี outline */
+  border-color: var(--accent-purple); /* เส้นขอบสีม่วง */
+  box-shadow: 0 0 0 3px var(--accent-soft); /* เงา */
+} /* เอฟเฟกต์ focus */
+
+@media (max-width: 1140px) { /* สำหรับหน้าจอขนาดกลาง */
+
+  .dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* 2 คอลัมน์ */
+  }
+
+  .pos-layout {
+    grid-template-columns: 1fr; /* 1 คอลัมน์ */
+  }
+
+  .modal-content {
+    width: min(90vw, 100%); /* กว้าง 90% หรือเต็ม */
+  }
+
+  #product-form .grid {
+    grid-template-columns: 1fr; /* 1 คอลัมน์ */
+  }
+}
+
+@media (max-width: 860px) { /* สำหรับหน้าจอขนาดเล็ก */
+  .main-panel {
+    padding: 0 16px; /* ลดขอบด้านข้างบนมือถือ */
+  }
+
+  .sidebar {
+    width: 100%; /* กว้างเต็ม */
+    flex-direction: row; /* จัดแนวนอน */
+    align-items: center; /* จัดกลาง */
+    justify-content: space-between; /* ช่องว่างระหว่าง */
+    padding: 20px; /* ช่องว่างภายใน */
+  }
+
+  .sidebar-nav {
+    flex-direction: row; /* จัดแนวนอน */
+    flex-wrap: wrap; /* ห่อบรรทัด */
+    gap: 10px; /* ช่องว่าง */
+  }
+
+  .sidebar-footer {
+    display: none; /* ซ่อน */
+  }
+
+  .topbar {
+    flex-wrap: wrap; /* ห่อบรรทัด */
+    gap: 16px; /* ช่องว่าง */
+    padding: 0; /* ใช้ padding จาก main-panel */
+  }
+
+  .main-content {
+    padding: 20px 0; /* ช่องว่างบน/ล่าง และใช้ padding ด้านข้างจาก main-panel */
+  }
+
+  .modal-content {
+    width: 100%; /* กว้างเต็มกรอบ */
+    max-width: 100%; /* กว้างสูงสุดเต็ม */
+    padding: 0; /* ลบ padding เพิ่มเติมเพื่อให้ภายในเลื่อนง่าย */
+  }
+
+  #product-form .grid {
+    grid-template-columns: 1fr; /* 1 คอลัมน์ */
+  }
+}
+
+@media (max-width: 640px) { /* สำหรับหน้าจอขนาดเล็กมาก */
+  .dashboard-grid {
+    grid-template-columns: 1fr; /* 1 คอลัมน์ */
+  }
+
+  .grid {
+    grid-template-columns: 1fr; /* 1 คอลัมน์ */
+  }
+}
+
+/* Toast Notification Styles */
+#toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast {
+  min-width: 300px;
+  padding: 16px 24px;
+  border-radius: 12px;
+  background: white;
+  color: #1f2937;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transform: translateX(120%);
+  transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  border-left: 6px solid #6366f1;
+}
+
+.toast.show {
+  transform: translateX(0);
+}
+
+.toast-success { border-left-color: #10b981; }
+.toast-error { border-left-color: #ef4444; }
+.toast-warning { border-left-color: #f59e0b; }
+
+.toast-icon {
+  font-size: 20px;
+}
+
+.toast-content {
+  flex: 1;
+}
+
+.toast-title {
+  font-weight: bold;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+.toast-message {
+  font-size: 0.85rem;
+  color: #6b7280;
+}

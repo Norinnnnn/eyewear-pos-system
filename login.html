@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>เข้าสู่ระบบ - ร้านแว่นตาอานนท์</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Prompt', sans-serif;
+      background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .login-card {
+      background: white;
+      border-radius: 30px;
+      padding: 40px;
+      box-shadow: 0 20px 40px rgba(124, 58, 237, 0.1);
+      width: 100%;
+      max-width: 450px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+    
+    .logo-container {
+      margin-bottom: 25px;
+    }
+    
+    .login-logo {
+      width: 140px; /* ขยายขนาดโลโก้ในหน้า login */
+      height: 140px;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 5px solid #f5f3ff;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+      background: white;
+      padding: 5px;
+    }
+    
+    .login-header h1 {
+      color: #1f2937;
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    
+    .login-header p {
+      color: #6b7280;
+      font-size: 1rem;
+      margin-bottom: 30px;
+    }
+    
+    .form-group {
+      text-align: left;
+      margin-bottom: 20px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #374151;
+      font-weight: 500;
+      font-size: 0.95rem;
+    }
+    
+    .input-wrapper {
+      position: relative;
+    }
+    
+    input {
+      width: 100%;
+      padding: 14px 18px;
+      border: 2px solid #f3f4f6;
+      border-radius: 15px;
+      font-size: 1rem;
+      font-family: inherit;
+      transition: all 0.3s ease;
+      background: #f9fafb;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #7c3aed;
+      background: white;
+      box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+    }
+    
+    button {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+      color: white;
+      border: none;
+      border-radius: 15px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 10px;
+      box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.3);
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 20px -3px rgba(124, 58, 237, 0.4);
+      filter: brightness(1.1);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    .error-box {
+      background: #fef2f2;
+      color: #b91c1c;
+      padding: 12px;
+      border-radius: 12px;
+      margin-top: 15px;
+      font-size: 0.9rem;
+      display: none;
+      border: 1px solid #fee2e2;
+    }
+    
+    .demo-accounts {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #f3f4f6;
+      font-size: 0.85rem;
+      color: #9ca3af;
+    }
+    
+    .demo-accounts strong {
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="logo-container">
+      <img src="png.png" alt="Logo" class="login-logo">
+    </div>
+    
+    <div class="login-header">
+      <h1>ยินดีต้อนรับ</h1>
+      <p>กรุณาเข้าสู่ระบบร้านแว่นตาอานนท์</p>
+    </div>
+    
+    <form id="login-form">
+      <div class="form-group">
+        <label for="username">ชื่อผู้ใช้งาน</label>
+        <div class="input-wrapper">
+          <input type="text" id="username" placeholder="ระบุชื่อผู้ใช้งาน" required autofocus />
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="password">รหัสผ่าน</label>
+        <div class="input-wrapper">
+          <input type="password" id="password" placeholder="ระบุรหัสผ่าน" required />
+        </div>
+      </div>
+      
+      <button type="submit" id="login-btn">เข้าสู่ระบบทันที</button>
+      
+      <div id="error-message" class="error-box"></div>
+    </form>
+    
+    <div class="demo-accounts">
+      <p><strong>บัญชีทดสอบ:</strong> admin / admin123 หรือ user / user123</p>
+    </div>
+  </div>
+  
+  <script>
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const errorBox = document.getElementById("error-message");
+      const btn = document.getElementById("login-btn");
+      
+      errorBox.style.display = "none";
+      btn.disabled = true;
+      btn.textContent = "กำลังเข้าสู่ระบบ...";
+      
+      try {
+        const response = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          errorBox.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + (error.error || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+          errorBox.style.display = "block";
+          btn.disabled = false;
+          btn.textContent = "เข้าสู่ระบบทันที";
+          return;
+        }
+        
+        const data = await response.json();
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("token", data.token);
+        
+        // เพิ่มความสมูทก่อนย้ายหน้า
+        btn.innerHTML = '<i class="fas fa-check-circle"></i> สำเร็จ! กำลังไปที่หน้าหลัก...';
+        setTimeout(() => {
+          window.location.href = "/dashboard.html";
+        }, 800);
+        
+      } catch (error) {
+        errorBox.innerHTML = '<i class="fas fa-wifi-slash"></i> เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์';
+        errorBox.style.display = "block";
+        btn.disabled = false;
+        btn.textContent = "เข้าสู่ระบบทันที";
+      }
+    });
+  </script>
+</body>
+</html>
