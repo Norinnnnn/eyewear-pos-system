@@ -495,5 +495,12 @@ app.post("/api/settings", authenticateToken, async (req, res) => {
 
 const port = process.env.PORT || 3000;
 initializeDatabase().then(() => {
+  app.listen(port, "0.0.0.0", () => console.log(`Server running at http://0.0.0.0:${port} - RESTARTED_${Date.now()}`));
+}).catch(e => { 
+  console.error("DATABASE INITIALIZATION ERROR:", e);
+  // Don't exit immediately, let Express start so we can see logs
+  app.listen(port, "0.0.0.0", () => console.log(`Server running in ERROR MODE at http://0.0.0.0:${port}`));
+});
+ase().then(() => {
   app.listen(port, () => console.log(`Server running at http://localhost:${port} - RESTARTED_${Date.now()}`));
 }).catch(e => { console.error(e); process.exit(1); });
