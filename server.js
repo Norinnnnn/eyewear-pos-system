@@ -5,10 +5,19 @@ const dotenv = require("dotenv");
 const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 dotenv.config();
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 const app = express();
 app.use(cors());
@@ -49,11 +58,16 @@ const uploadDir = path.join(__dirname, "uploads");
 fs.mkdirSync(uploadDir, { recursive: true });
 app.use("/uploads", express.static(uploadDir));
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const safeName = file.originalname.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_.-]/g, "");
-    cb(null, `${Date.now()}-${safeName}`);
+// Cloudinary Storage Configuration
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "eyewear_inventory",
+    allowed_formats: ["jpg", "png", "jpeg", "webp"],
+    public_id: (req, file) => {
+      const safeName = file.originalname.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_.-]/g, "");
+      return `${Date.now()}-${safeName}`;
+    },
   },
 });
 
@@ -274,7 +288,7 @@ app.get("/api/products", authenticateToken, async (req, res) => {
 
 app.post("/api/products", authenticateToken, upload.single("image"), async (req, res) => {
   const { sku, name, category, price, stock, cost, color, prescription } = req.body;
-  const image = req.file ? `/uploads/${req.file.filename}` : null;
+  const image = req.file ? req.file.path : null;
   try {
     await pool.query(
       "INSERT INTO products (sku, name, category, price, stock, image, cost, color, prescription) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -291,7 +305,7 @@ app.post("/api/products", authenticateToken, upload.single("image"), async (req,
 
 app.put("/api/products/:sku", authenticateToken, upload.single("image"), async (req, res) => {
   const { name, category, price, stock, cost, color, prescription } = req.body;
-  const image = req.file ? `/uploads/${req.file.filename}` : null;
+  const image = req.file ? req.file.path : null;
   try {
     let sql = "UPDATE products SET name=?, category=?, price=?, stock=?, cost=?, color=?, prescription=? WHERE sku=?";
     let params = [name, category, price, stock, cost || 0, color || "", prescription || "", req.params.sku];
