@@ -161,6 +161,7 @@ async function initializeDatabase() {
         total DECIMAL(12,2) NOT NULL,
         discount DECIMAL(12,2) DEFAULT 0,
         payment_method ENUM('cash', 'qr', 'transfer') DEFAULT 'cash',
+        is_voided TINYINT(1) DEFAULT 0,
         sold_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );`,
     settings: `
@@ -189,14 +190,6 @@ async function initializeDatabase() {
         note TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-      );`,
-    stock_logs: `
-      CREATE TABLE IF NOT EXISTS stock_logs (
-        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        sku VARCHAR(50),
-        user_id INT UNSIGNED,
-        quantity INT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );`,
     customers: `
       CREATE TABLE IF NOT EXISTS customers (
@@ -349,28 +342,9 @@ app.post("/api/products/:sku/add-stock", authenticateToken, async (req, res) => 
   const qty = parseInt(quantity);
   if (isNaN(qty) || qty <= 0) return res.status(400).json({ error: "จำนวนไม่ถูกต้อง" });
   
-  const connection = await pool.getConnection();
   try {
-    await connection.beginTransaction();
-    await connection.query("UPDATE products SET stock = stock + ? WHERE sku = ?", [qty, req.params.sku]);
-    await connection.query("INSERT INTO stock_logs (sku, user_id, quantity) VALUES (?, ?, ?)", [req.params.sku, req.user.id, qty]);
-    await connection.commit();
+    await pool.query("UPDATE products SET stock = stock + ? WHERE sku = ?", [qty, req.params.sku]);
     res.json({ message: "เพิ่มสต็อกสำเร็จ" });
-  } catch (error) {
-    await connection.rollback();
-    handleError(res, error);
-  } finally {
-    connection.release();
-  }
-});
-
-app.get("/api/stock-logs", authenticateToken, async (req, res) => {
-  try {
-    const [rows] = await pool.query(`SELECT sl.*, p.name as product_name, u.name as user_name FROM stock_logs sl 
-                                     LEFT JOIN products p ON sl.sku = p.sku 
-                                     LEFT JOIN users u ON sl.user_id = u.id 
-                                     ORDER BY sl.created_at DESC LIMIT 100`);
-    res.json(rows);
   } catch (error) { handleError(res, error); }
 });
 
@@ -556,6 +530,33 @@ app.get("/api/orders/:id", authenticateToken, async (req, res) => {
       items: rows.map(r => ({ sku: r.sku, product_name: r.product_name, qty: r.qty, unit_price: r.unit_price, discount: r.discount, total: r.total }))
     });
   } catch (error) { handleError(res, error); }
+});
+
+app.delete("/api/orders/:id", authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: "เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถยกเลิกออเดอร์ได้" });
+  
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    
+    // Get items to restore stock
+    const [items] = await connection.query("SELECT sku, qty FROM sales WHERE order_id = ? AND is_voided = 0", [req.params.id]);
+    
+    for (const item of items) {
+      await connection.query("UPDATE products SET stock = stock + ? WHERE sku = ?", [item.qty, item.sku]);
+    }
+    
+    // Mark as voided
+    await connection.query("UPDATE sales SET is_voided = 1 WHERE order_id = ?", [req.params.id]);
+    
+    await connection.commit();
+    res.json({ message: "ยกเลิกออเดอร์และคืนสต็อกเรียบร้อย" });
+  } catch (error) {
+    await connection.rollback();
+    handleError(res, error);
+  } finally {
+    connection.release();
+  }
 });
 
 // --- Prescription Endpoints ---
