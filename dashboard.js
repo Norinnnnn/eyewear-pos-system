@@ -1068,6 +1068,10 @@ function renderReports() {
         <div style="font-size: 0.85rem; color: #64748b;">ยอดขายรวม (ที่พบ)</div>
         <div style="font-size: 1.5rem; font-weight: 800; color: #059669;">฿${list.reduce((sum, o) => sum + o.total, 0).toLocaleString(undefined, {minimumFractionDigits:2})}</div>
       </div>
+      <div class="metric-card" style="padding: 15px; border-left: 5px solid #7c3aed;">
+        <div style="font-size: 0.85rem; color: #64748b;">กำไรเบื้องต้น (ที่พบ)</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: #7c3aed;">฿${sales.reduce((sum, s) => sum + (Number(s.total) - (Number(s.qty) * Number(products.find(p=>p.sku===s.sku)?.cost || 0))), 0).toLocaleString(undefined, {minimumFractionDigits:2})}</div>
+      </div>
     </div>
 
     <div class="card"><div class="table-wrap"><table>
