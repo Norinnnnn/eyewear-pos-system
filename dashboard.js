@@ -599,6 +599,30 @@ function renderInventory() {
         </form>
       </div>
     </div>
+
+    <div id="stock-modal" class="modal" style="display: none;">
+      <div class="modal-content" style="width: min(100%, 450px);">
+        <div class="modal-header" style="background: #ecfdf5; border-bottom: 1px solid #d1fae5;">
+          <h2 style="color: #065f46;"><i class="fas fa-plus-circle"></i> เพิ่มสต็อกสินค้า</h2>
+          <button onclick="closeStockModal()" class="modal-close"><i class="fas fa-times"></i></button>
+        </div>
+        <form onsubmit="addStock(event)">
+          <div style="padding: 24px 32px;">
+            <div id="stock-product-info" style="background: #f8fafc; padding: 16px; border-radius: 16px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; border: 1px solid #e2e8f0;">
+              <!-- Product info will be injected here -->
+            </div>
+            <label style="font-weight: 600; color: #374151; margin-bottom: 8px;">จำนวนที่ต้องการเพิ่ม (ชิ้น)</label>
+            <input type="number" id="stock-qty" placeholder="ใส่จำนวนที่ต้องการเพิ่ม" required min="1" step="1" 
+              style="font-size: 1.5rem; font-weight: 800; text-align: center; padding: 15px; border-radius: 16px; border: 2px solid #e2e8f0; color: #059669;" />
+            <p style="margin-top: 10px; font-size: 0.85rem; color: #6b7280; text-align: center;">สต็อกจะถูกบวกเพิ่มจากจำนวนปัจจุบันทันที</p>
+          </div>
+          <div class="modal-footer" style="padding: 20px 32px; background: #f9fafb;">
+            <button type="button" onclick="closeStockModal()" style="background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb;">ยกเลิก</button>
+            <button type="submit" class="btn-primary" style="background: #059669; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.2);"><i class="fas fa-check"></i> ยืนยันการเพิ่ม</button>
+          </div>
+        </form>
+      </div>
+    </div>
   `;
   renderInventoryRows();
 }
@@ -653,6 +677,7 @@ function renderInventoryRows() {
       </td>
       <td style="text-align: center;">
         <div style="display: flex; gap: 8px; justify-content: center;">
+          <button onclick="openAddStockModal('${p.sku}')" style="background: #ecfdf5; color: #059669; padding: 8px; border-radius: 8px; border: none; cursor: pointer;" title="เพิ่มสต็อก"><i class="fas fa-plus"></i></button>
           <button onclick="editProduct('${p.sku}')" style="background: #eff6ff; color: #2563eb; padding: 8px; border-radius: 8px; border: none; cursor: pointer;" title="แก้ไข"><i class="fas fa-edit"></i></button>
           <button onclick="delProduct('${p.sku}')" style="background: #fef2f2; color: #ef4444; padding: 8px; border-radius: 8px; border: none; cursor: pointer;" title="ลบ"><i class="fas fa-trash-alt"></i></button>
         </div>
@@ -782,6 +807,58 @@ function editProduct(sku) {
 
 function closeModal() { 
   document.getElementById("inv-modal").style.display = "none"; 
+}
+
+function openAddStockModal(sku) {
+  const p = products.find(x => x.sku === sku);
+  if (!p) return;
+  
+  editProductSku = sku;
+  const modal = document.getElementById("stock-modal");
+  const infoCont = document.getElementById("stock-product-info");
+  
+  infoCont.innerHTML = `
+    <img src="${p.image || 'https://via.placeholder.com/50?text=?'}" style="width: 60px; height: 60px; border-radius: 12px; object-fit: cover; border: 1px solid #e2e8f0;" />
+    <div style="flex: 1;">
+      <div style="font-weight: 700; color: #1e293b; font-size: 1.1rem;">${p.name}</div>
+      <div style="font-size: 0.85rem; color: #64748b;">รหัส: ${p.sku} | สต็อกปัจจุบัน: <span style="font-weight: 800; color: #7c3aed;">${p.stock}</span></div>
+    </div>
+  `;
+  
+  document.getElementById("stock-qty").value = "";
+  modal.style.display = "flex";
+  setTimeout(() => document.getElementById("stock-qty").focus(), 100);
+}
+
+function closeStockModal() {
+  document.getElementById("stock-modal").style.display = "none";
+}
+
+async function addStock(e) {
+  e.preventDefault();
+  const qty = document.getElementById("stock-qty").value;
+  if (!qty || qty <= 0) return showToast("กรุณาใส่จำนวนที่ถูกต้อง", "warning");
+  
+  try {
+    const res = await fetch(`/api/products/${editProductSku}/add-stock`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quantity: qty })
+    });
+    
+    if (res.ok) {
+      showToast(`เพิ่มสต็อกสำเร็จ (+${qty})`, "success");
+      closeStockModal();
+      await loadData();
+      renderInventory();
+    } else {
+      const err = await res.json();
+      showToast(err.error || "ไม่สามารถเพิ่มสต็อกได้", "error");
+    }
+  } catch (error) {
+    console.error("Add stock failed:", error);
+    showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", "error");
+  }
 }
 
 async function delProduct(sku) {

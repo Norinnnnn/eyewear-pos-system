@@ -318,6 +318,17 @@ app.put("/api/products/:sku", authenticateToken, upload.single("image"), async (
   } catch (error) { handleError(res, error); }
 });
 
+app.post("/api/products/:sku/add-stock", authenticateToken, async (req, res) => {
+  const { quantity } = req.body;
+  const qty = parseInt(quantity);
+  if (isNaN(qty) || qty <= 0) return res.status(400).json({ error: "จำนวนไม่ถูกต้อง" });
+  
+  try {
+    await pool.query("UPDATE products SET stock = stock + ? WHERE sku = ?", [qty, req.params.sku]);
+    res.json({ message: "เพิ่มสต็อกสำเร็จ" });
+  } catch (error) { handleError(res, error); }
+});
+
 app.delete("/api/products/:sku", authenticateToken, async (req, res) => {
   try {
     await pool.query("DELETE FROM products WHERE sku = ?", [req.params.sku]);
