@@ -559,6 +559,35 @@ app.delete("/api/orders/:id", authenticateToken, async (req, res) => {
   }
 });
 
+// --- Prescription Endpoints ---
+
+app.get("/api/customers/:phone/prescriptions", authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await pool.query(`SELECT pr.* FROM prescriptions pr 
+                                     JOIN customers c ON pr.customer_id = c.id 
+                                     WHERE c.phone = ? ORDER BY pr.created_at DESC`, [req.params.phone]);
+    res.json(rows);
+  } catch (error) { handleError(res, error); }
+});
+
+app.post("/api/prescriptions", authenticateToken, async (req, res) => {
+  const { customer_id, sph_r, cyl_r, axis_r, sph_l, cyl_l, axis_l, add_val, pd, note } = req.body;
+  try {
+    await pool.query(
+      "INSERT INTO prescriptions (customer_id, sph_r, cyl_r, axis_r, sph_l, cyl_l, axis_l, add_val, pd, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [customer_id, sph_r, cyl_r, axis_r, sph_l, cyl_l, axis_l, add_val, pd, note]
+    );
+    res.status(201).json({ message: "บันทึกค่าสายตาเรียบร้อย" });
+  } catch (error) { handleError(res, error); }
+});
+
+app.delete("/api/prescriptions/:id", authenticateToken, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM prescriptions WHERE id = ?", [req.params.id]);
+    res.json({ message: "ลบข้อมูลเรียบร้อย" });
+  } catch (error) { handleError(res, error); }
+});
+
 app.get("/api/settings", authenticateToken, async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT low_stock_threshold FROM settings WHERE id = 1");

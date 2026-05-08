@@ -1421,54 +1421,200 @@ function viewCustomerHistory(phone) {
   const modal = document.getElementById("history-modal");
   const content = document.getElementById("history-content");
   
-  const custSales = sales.filter(s => s.customer_phone === phone);
+  // Set modal title and tabs
+  modal.querySelector("h2").innerHTML = `<i class="fas fa-user-tag"></i> ข้อมูลลูกค้า: ${cust.name}`;
   
-  if (custSales.length === 0) {
-    content.innerHTML = `
-      <div style="text-align: center; padding: 40px; color: #94a3b8;">
-        <i class="fas fa-shopping-basket fa-3x" style="margin-bottom: 15px; opacity: 0.3;"></i>
-        <p>ยังไม่พบประวัติการซื้อของลูกค้าท่านนี้</p>
-      </div>
-    `;
-  } else {
-    // Group by Order ID
-    const orders = {};
-    custSales.forEach(s => {
-      if (!orders[s.order_id]) orders[s.order_id] = { id: s.order_id, date: s.sold_at, items: [], total: 0 };
-      orders[s.order_id].items.push(s);
-      orders[s.order_id].total += Number(s.total);
-    });
+  content.innerHTML = `
+    <style>
+      .tab-btn { padding: 10px 20px; border: none; background: none; cursor: pointer; font-weight: 600; color: #64748b; border-bottom: 2px solid transparent; transition: 0.2s; }
+      .tab-btn.active { color: #7c3aed; border-bottom-color: #7c3aed; background: #f5f3ff; border-radius: 8px 8px 0 0; }
+      .tab-btn:hover:not(.active) { background: #f8fafc; color: #1e293b; border-radius: 8px 8px 0 0; }
+    </style>
+    <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
+      <button onclick="switchHistoryTab('sales', '${phone}')" id="tab-sales" class="tab-btn active">ประวัติการซื้อ</button>
+      <button onclick="switchHistoryTab('pres', '${phone}')" id="tab-pres" class="tab-btn">ค่าสายตา (Prescription)</button>
+    </div>
+    <div id="tab-content-area"></div>
+  `;
+  
+  switchHistoryTab('sales', phone);
+  modal.style.display = "flex";
+}
 
-    const orderList = Object.values(orders).sort((a,b) => new Date(b.date) - new Date(a.date));
+async function switchHistoryTab(tab, phone) {
+  const contentArea = document.getElementById("tab-content-area");
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById(`tab-${tab}`).classList.add("active");
 
-    content.innerHTML = `
-      <div style="background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
-        <div style="font-weight: 700; font-size: 1.1rem; color: #1e293b;">${cust.name}</div>
-        <div style="color: #64748b; font-size: 0.9rem;"><i class="fas fa-phone"></i> ${cust.phone}</div>
-      </div>
-      ${orderList.map(o => `
-        <div style="border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden;">
-          <div style="background: #f1f5f9; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0;">
-            <div style="font-weight: 600; font-size: 0.85rem;">ออเดอร์: ${o.id}</div>
+  if (tab === 'sales') {
+    const custSales = sales.filter(s => s.customer_phone === phone);
+    if (custSales.length === 0) {
+      contentArea.innerHTML = `<div style="text-align: center; padding: 40px; color: #94a3b8;"><i class="fas fa-shopping-basket fa-3x" style="margin-bottom: 15px; opacity: 0.3;"></i><p>ยังไม่พบประวัติการซื้อ</p></div>`;
+    } else {
+      const orders = {};
+      custSales.forEach(s => {
+        if (!orders[s.order_id]) orders[s.order_id] = { id: s.order_id, date: s.sold_at, items: [], total: 0, voided: s.is_voided };
+        orders[s.order_id].items.push(s);
+        orders[s.order_id].total += Number(s.total);
+      });
+      const orderList = Object.values(orders).sort((a,b) => new Date(b.date) - new Date(a.date));
+      contentArea.innerHTML = orderList.map(o => `
+        <div style="border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; ${o.voided ? 'opacity: 0.5; text-decoration: line-through;' : ''}">
+          <div style="background: #f1f5f9; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-weight: 600; font-size: 0.85rem;">ออเดอร์: ${o.id} ${o.voided ? '[ยกเลิกแล้ว]' : ''}</div>
             <div style="font-size: 0.8rem; color: #64748b;">${new Date(o.date).toLocaleString("th-TH")}</div>
           </div>
           <div style="padding: 10px 15px;">
-            ${o.items.map(item => `
-              <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem;">
-                <span>${item.product_name || item.sku} x ${item.qty}</span>
-                <span style="font-weight: 600;">฿${Number(item.total).toLocaleString()}</span>
-              </div>
-            `).join("")}
-            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1; text-align: right; font-weight: 700; color: #7c3aed;">
-              ยอดรวม: ฿${o.total.toLocaleString()}
-            </div>
+            ${o.items.map(item => `<div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem;"><span>${item.product_name || item.sku} x ${item.qty}</span><span style="font-weight: 600;">฿${Number(item.total).toLocaleString()}</span></div>`).join("")}
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1; text-align: right; font-weight: 700; color: #7c3aed;">ยอดรวม: ฿${o.total.toLocaleString()}</div>
           </div>
         </div>
-      `).join("")}
-    `;
+      `).join("");
+    }
+  } else {
+    // Prescriptions tab
+    contentArea.innerHTML = `<div style="text-align: center; padding: 20px;"><i class="fas fa-circle-notch fa-spin"></i> กำลังโหลด...</div>`;
+    try {
+      const res = await fetch(`/api/customers/${phone}/prescriptions`);
+      const presList = await res.json();
+      const cust = customers.find(x => x.phone === phone);
+      
+      let html = `
+        <button onclick="openAddPrescriptionModal(${cust.id}, '${phone}')" class="btn-primary" style="width: 100%; margin-bottom: 20px; background: #059669;"><i class="fas fa-plus-circle"></i> เพิ่มค่าสายตาใหม่</button>
+      `;
+
+      if (presList.length === 0) {
+        html += `<div style="text-align: center; padding: 40px; color: #94a3b8;"><i class="fas fa-eye fa-3x" style="margin-bottom: 15px; opacity: 0.3;"></i><p>ยังไม่มีบันทึกค่าสายตา</p></div>`;
+      } else {
+        html += presList.map(p => `
+          <div style="border: 1px solid #e2e8f0; border-radius: 16px; margin-bottom: 15px; padding: 15px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+              <div style="font-weight: 700; color: #1e293b;"><i class="far fa-calendar-alt"></i> ${new Date(p.created_at).toLocaleDateString("th-TH")}</div>
+              <button onclick="deletePrescription(${p.id}, '${phone}')" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 5px;"><i class="fas fa-trash-alt"></i></button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+              <div style="background: #f8fafc; padding: 10px; border-radius: 12px;">
+                <div style="font-weight: 800; color: #7c3aed; margin-bottom: 5px; text-align: center; font-size: 0.8rem; border-bottom: 1px solid #ddd;">ตาขวา (R)</div>
+                <div style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 3px;">
+                  <span>Sph: <strong>${p.sph_r || '-'}</strong></span>
+                  <span>Cyl: <strong>${p.cyl_r || '-'}</strong></span>
+                  <span>Axis: <strong>${p.axis_r || '-'}</strong></span>
+                </div>
+              </div>
+              <div style="background: #f8fafc; padding: 10px; border-radius: 12px;">
+                <div style="font-weight: 800; color: #0284c7; margin-bottom: 5px; text-align: center; font-size: 0.8rem; border-bottom: 1px solid #ddd;">ตาซ้าย (L)</div>
+                <div style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 3px;">
+                  <span>Sph: <strong>${p.sph_l || '-'}</strong></span>
+                  <span>Cyl: <strong>${p.cyl_l || '-'}</strong></span>
+                  <span>Axis: <strong>${p.axis_l || '-'}</strong></span>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top: 12px; display: flex; gap: 20px; font-size: 0.85rem; background: #f0fdf4; padding: 8px 15px; border-radius: 10px;">
+              <span>ADD: <strong>${p.add_val || '-'}</strong></span>
+              <span>PD: <strong>${p.pd || '-'}</strong></span>
+            </div>
+            ${p.note ? `<div style="margin-top: 10px; font-size: 0.8rem; color: #64748b; font-style: italic; background: #fffbeb; padding: 8px; border-radius: 8px; border: 1px solid #fef3c7;">บันทึก: ${p.note}</div>` : ''}
+          </div>
+        `).join("");
+      }
+      contentArea.innerHTML = html;
+    } catch (err) {
+      contentArea.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 20px;">โหลดข้อมูลล้มเหลว</div>`;
+    }
   }
-  
-  modal.style.display = "flex";
+}
+
+function openAddPrescriptionModal(customerId, phone) {
+  let subModal = document.getElementById("pres-modal");
+  if (!subModal) {
+    subModal = document.createElement("div");
+    subModal.id = "pres-modal";
+    subModal.className = "modal";
+    subModal.style.zIndex = "2000";
+    document.body.appendChild(subModal);
+  }
+
+  subModal.innerHTML = `
+    <div class="modal-content" style="width: min(100%, 500px);">
+      <div class="modal-header" style="background: #ecfdf5; border-bottom: 1px solid #d1fae5;">
+        <h2 style="color: #065f46;"><i class="fas fa-eye"></i> บันทึกค่าสายตาใหม่</h2>
+        <button onclick="document.getElementById('pres-modal').style.display='none'" class="modal-close"><i class="fas fa-times"></i></button>
+      </div>
+      <form onsubmit="savePrescription(event, ${customerId}, '${phone}')">
+        <div style="padding: 24px 32px;">
+          <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div style="background: #f5f3ff; padding: 15px; border-radius: 16px; border: 1px solid #ddd;">
+              <h4 style="color: #7c3aed; margin-bottom: 10px; text-align: center;">ตาขวา (R)</h4>
+              <label style="font-size: 0.8rem;">Sph<input type="text" id="pr-sph-r" placeholder="-1.00" /></label>
+              <label style="font-size: 0.8rem;">Cyl<input type="text" id="pr-cyl-r" placeholder="-0.50" /></label>
+              <label style="font-size: 0.8rem;">Axis<input type="text" id="pr-axis-r" placeholder="180" /></label>
+            </div>
+            <div style="background: #f0f9ff; padding: 15px; border-radius: 16px; border: 1px solid #ddd;">
+              <h4 style="color: #0284c7; margin-bottom: 10px; text-align: center;">ตาซ้าย (L)</h4>
+              <label style="font-size: 0.8rem;">Sph<input type="text" id="pr-sph-l" placeholder="-1.00" /></label>
+              <label style="font-size: 0.8rem;">Cyl<input type="text" id="pr-cyl-l" placeholder="-0.50" /></label>
+              <label style="font-size: 0.8rem;">Axis<input type="text" id="pr-axis-l" placeholder="180" /></label>
+            </div>
+          </div>
+          <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+            <label>ค่า ADD (อ่านหนังสือ)<input type="text" id="pr-add" placeholder="+2.00" /></label>
+            <label>ค่า PD (ระยะห่างตาดำ)<input type="text" id="pr-pd" placeholder="64" /></label>
+          </div>
+          <label style="margin-top: 15px;">บันทึกเพิ่มเติม<textarea id="pr-note" placeholder="ข้อมูลเลนส์ที่ใช้หรืออาการ" rows="2" style="width: 100%; border-radius: 12px; border: 1px solid #ddd; padding: 10px; font-family: inherit;"></textarea></label>
+        </div>
+        <div class="modal-footer" style="padding: 20px 32px; background: #f9fafb;">
+          <button type="button" onclick="document.getElementById('pres-modal').style.display='none'" style="background: #e5e7eb; color: #4b5563;">ยกเลิก</button>
+          <button type="submit" class="btn-primary" style="background: #059669;"><i class="fas fa-save"></i> บันทึกข้อมูล</button>
+        </div>
+      </form>
+    </div>
+  `;
+  subModal.style.display = "flex";
+}
+
+async function savePrescription(e, customerId, phone) {
+  e.preventDefault();
+  const data = {
+    customer_id: customerId,
+    sph_r: document.getElementById("pr-sph-r").value,
+    cyl_r: document.getElementById("pr-cyl-r").value,
+    axis_r: document.getElementById("pr-axis-r").value,
+    sph_l: document.getElementById("pr-sph-l").value,
+    cyl_l: document.getElementById("pr-cyl-l").value,
+    axis_l: document.getElementById("pr-axis-l").value,
+    add_val: document.getElementById("pr-add").value,
+    pd: document.getElementById("pr-pd").value,
+    note: document.getElementById("pr-note").value
+  };
+
+  try {
+    const res = await fetch("/api/prescriptions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (res.ok) {
+      showToast("บันทึกค่าสายตาเรียบร้อย", "success");
+      document.getElementById("pres-modal").style.display = "none";
+      switchHistoryTab('pres', phone);
+    }
+  } catch (err) {
+    showToast("ไม่สามารถบันทึกได้", "error");
+  }
+}
+
+async function deletePrescription(id, phone) {
+  if (!confirm("ต้องการลบข้อมูลค่าสายตานี้ใช่หรือไม่?")) return;
+  try {
+    const res = await fetch(`/api/prescriptions/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      showToast("ลบข้อมูลเรียบร้อย", "success");
+      switchHistoryTab('pres', phone);
+    }
+  } catch (err) {
+    showToast("ไม่สามารถลบได้", "error");
+  }
 }
 
 function closeHistoryModal() {
@@ -1695,6 +1841,10 @@ async function generateReceiptPDF(orderId) {
   const res = await fetch(`/api/orders/${orderId}`);
   if (!res.ok) return showToast("ไม่พบข้อมูลออเดอร์", "error");
   const order = await res.json();
+  
+  // Find payment method from sales data
+  const saleEntry = sales.find(s => s.order_id === orderId);
+  const methodLabel = saleEntry?.payment_method === 'cash' ? 'เงินสด' : (saleEntry?.payment_method === 'qr' ? 'QR Code' : 'โอนเงิน');
 
   const element = document.createElement("div");
   element.style.padding = "40px";
@@ -1715,6 +1865,7 @@ async function generateReceiptPDF(orderId) {
       <div>
         <p style="margin: 3px 0;"><strong>เลขออเดอร์:</strong> ${order.order_id}</p>
         <p style="margin: 3px 0;"><strong>วันที่:</strong> ${new Date(order.sold_at).toLocaleString("th-TH")}</p>
+        <p style="margin: 3px 0;"><strong>ชำระโดย:</strong> ${methodLabel}</p>
       </div>
       <div style="text-align: right;">
         <p style="margin: 3px 0;"><strong>ลูกค้า:</strong> ${order.customer_name || 'ลูกค้าทั่วไป'}</p>
