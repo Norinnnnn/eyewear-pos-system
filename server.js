@@ -204,6 +204,7 @@ async function initializeDatabase() {
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(150) NOT NULL,
         phone VARCHAR(20) UNIQUE NOT NULL,
+        points INT DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );`
   };
@@ -213,6 +214,11 @@ async function initializeDatabase() {
     for (const sql of Object.values(tables)) {
       await connection.query(sql);
     }
+
+    // Add points column if missing
+    try {
+      await connection.query("ALTER TABLE customers ADD COLUMN points INT DEFAULT 0 AFTER phone;");
+    } catch (e) { /* Likely exists */ }
 
     // Add payment_method column to existing sales table if missing
     try {
