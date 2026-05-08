@@ -323,30 +323,36 @@ function renderHome() {
       </div>
     ` : ""}
   `;
+  renderCharts();
+}
+
+function renderCharts() {
   renderSalesChart();
+  renderCategoryChart();
 }
 
 function renderSalesChart() {
   const ctx = document.getElementById('salesChart');
   if (!ctx) return;
 
-  // Prepare data for the last 7 days
   const labels = [];
   const dataPoints = [];
+  const activeSales = sales.filter(s => !s.is_voided);
+
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const dateStr = d.toLocaleDateString();
     labels.push(d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
     
-    const daySales = sales.filter(s => new Date(s.sold_at).toLocaleDateString() === dateStr);
+    const daySales = activeSales.filter(s => new Date(s.sold_at).toLocaleDateString() === dateStr);
     const dayRevenue = daySales.reduce((sum, s) => sum + Number(s.total || 0), 0);
     dataPoints.push(dayRevenue);
   }
 
-  if (window.myChart) window.myChart.destroy();
+  if (window.mySalesChart) window.mySalesChart.destroy();
   
-  window.myChart = new Chart(ctx, {
+  window.mySalesChart = new Chart(ctx, {
     type: 'line',
     data: {
       labels: labels,
@@ -365,13 +371,53 @@ function renderSalesChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false }
-      },
+      plugins: { legend: { display: false } },
       scales: {
         y: { beginAtZero: true, grid: { borderDash: [5, 5] } },
         x: { grid: { display: false } }
       }
+    }
+  });
+}
+
+function renderCategoryChart() {
+  const ctx = document.getElementById('categoryChart');
+  if (!ctx) return;
+
+  const activeSales = sales.filter(s => !s.is_voided);
+  const catMap = {};
+  
+  activeSales.forEach(s => {
+    const p = products.find(prod => prod.sku === s.sku);
+    const cat = p?.category || 'ทั่วไป';
+    catMap[cat] = (catMap[cat] || 0) + Number(s.total);
+  });
+
+  const labels = Object.keys(catMap);
+  const data = Object.values(catMap);
+
+  if (window.myCatChart) window.myCatChart.destroy();
+  
+  window.myCatChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: [
+          '#7c3aed', '#059669', '#0284c7', '#ea580c', '#db2777', '#6366f1'
+        ],
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15, font: { size: 11 } } }
+      },
+      cutout: '70%'
     }
   });
 }
@@ -893,10 +939,15 @@ function renderInventoryRows() {
       <td><span style="background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 99px; font-size: 0.8rem;">${p.category || 'ทั่วไป'}</span></td>
       <td style="text-align: right; color: #666;">฿${Number(p.cost || 0).toLocaleString()}</td>
       <td style="text-align: right; font-weight: 700; color: #7c3aed;">฿${Number(p.price).toLocaleString()}</td>
-      <td style="text-align: center;">
-        <span class="status-badge ${Number(p.stock) <= Number(settings.low_stock_threshold) ? 'status-low-stock' : 'status-in-stock'}">
-          ${p.stock}
-        </span>
+      <td style="text-align: center; width: 140px;">
+        <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;">
+          <span class="status-badge ${Number(p.stock) <= Number(settings.low_stock_threshold) ? 'status-low-stock' : 'status-in-stock'}" style="font-weight: 800; font-size: 1rem;">
+            ${p.stock}
+          </span>
+          <div style="width: 80px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+            <div style="width: ${Math.min(100, (p.stock / 50) * 100)}%; height: 100%; background: ${p.stock <= settings.low_stock_threshold ? '#ef4444' : '#059669'}; transition: width 0.5s ease;"></div>
+          </div>
+        </div>
       </td>
       <td style="text-align: center;">
         <div style="display: flex; gap: 8px; justify-content: center;">
