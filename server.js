@@ -150,7 +150,7 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );`,
     sales: `
-      CREATE TABLE IF NOT EXISTS sales (
+      await connection.query(`CREATE TABLE IF NOT EXISTS sales (
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         order_id VARCHAR(50),
         user_id INT UNSIGNED,
@@ -158,10 +158,11 @@ async function initializeDatabase() {
         sku VARCHAR(50),
         qty INT NOT NULL,
         unit_price DECIMAL(12,2) NOT NULL,
-        total DECIMAL(14,2) NOT NULL,
+        total DECIMAL(12,2) NOT NULL,
         discount DECIMAL(12,2) DEFAULT 0,
+        payment_method ENUM('cash', 'qr', 'transfer') DEFAULT 'cash',
         sold_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );`,
+      );`);
     settings: `
       CREATE TABLE IF NOT EXISTS settings (
         id TINYINT UNSIGNED PRIMARY KEY DEFAULT 1,
@@ -192,6 +193,11 @@ async function initializeDatabase() {
     for (const sql of Object.values(tables)) {
       await connection.query(sql);
     }
+
+    // Add payment_method column to existing sales table if missing
+    try {
+      await connection.query("ALTER TABLE sales ADD COLUMN payment_method ENUM('cash', 'qr', 'transfer') DEFAULT 'cash' AFTER discount;");
+    } catch (e) { /* Column likely exists */ }
 
     // Insert Defaults
     await connection.query("INSERT IGNORE INTO settings (id, low_stock_threshold) VALUES (1, 5);");
@@ -425,7 +431,7 @@ app.delete("/api/promotions/:id", authenticateToken, async (req, res) => {
 // --- Sales & Checkout ---
 
 app.post("/api/checkout", authenticateToken, async (req, res) => {
-  const { items, customer_phone, customer_name } = req.body;
+  const { items, customer_phone, customer_name, payment_method } = req.body;
   console.log(">>> CHECKOUT START:", { user: req.user.id, itemsCount: items?.length });
   const connection = await pool.getConnection();
   try {
@@ -469,8 +475,8 @@ app.post("/api/checkout", authenticateToken, async (req, res) => {
 
       console.log("Running SQL for item:", item.sku);
       await connection.query("UPDATE products SET stock = stock - ? WHERE sku = ?", [item.qty, item.sku]);
-      await connection.query("INSERT INTO sales (order_id, user_id, customer_id, sku, qty, unit_price, discount, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        [order_id, req.user.id, customer_id, item.sku, item.qty, product.price, totalDiscount, total]);
+      await connection.query("INSERT INTO sales (order_id, user_id, customer_id, sku, qty, unit_price, discount, total, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [order_id, req.user.id, customer_id, item.sku, item.qty, product.price, totalDiscount, total, payment_method || 'cash']);
     }
     await connection.commit();
     console.log(">>> CHECKOUT SUCCESS:", order_id);

@@ -566,6 +566,121 @@ function removeFromCart(idx) {
 async function checkout() {
   if (cart.length === 0) return showToast("กรุณาเลือกสินค้าก่อนยืนยันการขาย", "warning");
   
+  const sub = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+  const disc = cart.reduce((itemSum, item) => {
+    const promo = promotions.filter(p => p.is_active).find(pr => {
+      const skus = pr.applicable_skus ? pr.applicable_skus.split(",").map(s => s.trim()) : [];
+      return (skus.length === 0 || skus.includes(item.sku)) && item.qty >= pr.min_qty;
+    });
+    const itemDisc = promo ? (promo.discount_type === "fixed" ? Number(promo.discount_value) : (item.price * Number(promo.discount_value) / 100)) : 0;
+    return itemSum + (itemDisc * item.qty);
+  }, 0);
+  const total = sub - disc;
+
+  // Create payment modal dynamically
+  let modal = document.getElementById("payment-modal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "payment-modal";
+    modal.className = "modal";
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div class="modal-content" style="width: min(100%, 500px);">
+      <div class="modal-header" style="background: #fdf2f8; border-bottom: 1px solid #fce7f3;">
+        <h2 style="color: #be185d;"><i class="fas fa-money-bill-wave"></i> ชำระเงิน</h2>
+        <button onclick="document.getElementById('payment-modal').style.display='none'" class="modal-close"><i class="fas fa-times"></i></button>
+      </div>
+      <div style="padding: 24px 32px;">
+        <div style="text-align: center; margin-bottom: 25px; background: #f8fafc; padding: 20px; border-radius: 20px; border: 1px solid #e2e8f0;">
+          <div style="font-size: 0.9rem; color: #64748b; margin-bottom: 5px;">ยอดที่ต้องชำระ</div>
+          <div style="font-size: 2.5rem; font-weight: 800; color: #7c3aed;">฿${total.toLocaleString(undefined, {minimumFractionDigits:2})}</div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="font-weight: 700; display: block; margin-bottom: 10px; color: #374151;">ช่องทางชำระเงิน</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <label class="pay-method-btn">
+              <input type="radio" name="pay-method" value="cash" checked onchange="togglePayInputs()" />
+              <div class="method-box"><i class="fas fa-money-bill-alt"></i><span>เงินสด</span></div>
+            </label>
+            <label class="pay-method-btn">
+              <input type="radio" name="pay-method" value="qr" onchange="togglePayInputs()" />
+              <div class="method-box"><i class="fas fa-qrcode"></i><span>QR Code</span></div>
+            </label>
+            <label class="pay-method-btn">
+              <input type="radio" name="pay-method" value="transfer" onchange="togglePayInputs()" />
+              <div class="method-box"><i class="fas fa-university"></i><span>โอนเงิน</span></div>
+            </label>
+          </div>
+        </div>
+
+        <div id="cash-inputs">
+          <label style="font-weight: 700; display: block; margin-bottom: 8px; color: #374151;">รับเงินมา (บาท)</label>
+          <input type="number" id="pay-received" placeholder="0.00" step="0.01" 
+            style="font-size: 1.8rem; font-weight: 800; text-align: center; padding: 15px; border-radius: 16px; border: 2px solid #e2e8f0; color: #1e293b;" 
+            oninput="calculateChange(${total})" />
+          
+          <div style="margin-top: 15px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+            ${[20, 50, 100, 500, 1000].map(amt => `<button onclick="setPayAmount(${amt}, ${total})" class="amt-chip">${amt}</button>`).join('')}
+            <button onclick="setPayAmount(${total}, ${total})" class="amt-chip" style="grid-column: span 3; background: #f1f5f9; color: #475569;">จ่ายพอดี</button>
+          </div>
+
+          <div style="margin-top: 25px; padding: 15px; background: #ecfdf5; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #d1fae5;">
+            <div style="font-weight: 700; color: #065f46;">เงินทอน</div>
+            <div id="pay-change" style="font-size: 1.8rem; font-weight: 800; color: #059669;">฿0.00</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 20px 32px; background: #f9fafb;">
+        <button type="button" onclick="document.getElementById('payment-modal').style.display='none'" style="background: #e5e7eb; color: #4b5563;">ยกเลิก</button>
+        <button onclick="finalizeCheckout(${total})" class="btn-primary" style="background: #059669; padding: 15px 30px; font-size: 1.1rem;"><i class="fas fa-check-double"></i> ยืนยันการชำระเงิน</button>
+      </div>
+    </div>
+
+    <style>
+      .pay-method-btn input { display: none; }
+      .method-box { 
+        padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; text-align: center; cursor: pointer; transition: 0.2s; color: #64748b;
+        display: flex; flex-direction: column; gap: 5px;
+      }
+      .method-box i { font-size: 1.2rem; }
+      .method-box span { font-size: 0.8rem; font-weight: 600; }
+      .pay-method-btn input:checked + .method-box { border-color: #7c3aed; background: #f5f3ff; color: #7c3aed; }
+      .amt-chip { background: white; border: 1px solid #e2e8f0; padding: 8px; border-radius: 10px; font-weight: 700; cursor: pointer; color: #64748b; transition: 0.2s; }
+      .amt-chip:hover { background: #f8fafc; border-color: #cbd5e1; }
+    </style>
+  `;
+  
+  modal.style.display = "flex";
+  setTimeout(() => document.getElementById("pay-received").focus(), 100);
+}
+
+function togglePayInputs() {
+  const method = document.querySelector('input[name="pay-method"]:checked').value;
+  document.getElementById("cash-inputs").style.display = method === "cash" ? "block" : "none";
+}
+
+function calculateChange(total) {
+  const received = parseFloat(document.getElementById("pay-received").value) || 0;
+  const change = Math.max(0, received - total);
+  document.getElementById("pay-change").textContent = `฿${change.toLocaleString(undefined, {minimumFractionDigits:2})}`;
+}
+
+function setPayAmount(amt, total) {
+  document.getElementById("pay-received").value = amt;
+  calculateChange(total);
+}
+
+async function finalizeCheckout(totalAmount) {
+  const method = document.querySelector('input[name="pay-method"]:checked').value;
+  const received = parseFloat(document.getElementById("pay-received").value) || 0;
+  
+  if (method === "cash" && received < totalAmount) {
+    return showToast("ยอดเงินที่รับมาไม่เพียงพอ", "warning");
+  }
+
   const phone = document.getElementById("pos-customer").value;
   const cust = customers.find(x => x.phone === phone);
   
@@ -576,15 +691,16 @@ async function checkout() {
       body: JSON.stringify({ 
         items: cart, 
         customer_phone: phone, 
-        customer_name: cust?.name || (phone ? "ลูกค้าใหม่" : "ลูกค้าทั่วไป") 
+        customer_name: cust?.name || (phone ? "ลูกค้าใหม่" : "ลูกค้าทั่วไป"),
+        payment_method: method
       }),
     });
 
     if (res.ok) {
       const data = await res.json();
       showToast("บันทึกการขายสำเร็จ", "success");
+      document.getElementById("payment-modal").style.display = "none";
       
-      // Attempt to generate PDF but don't block
       generateReceiptPDF(data.order_id).catch(err => console.error("PDF Error:", err));
       
       cart = [];
@@ -599,7 +715,6 @@ async function checkout() {
     showToast("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้", "error");
   }
 }
-
 
 // --- Inventory Page ---
 
