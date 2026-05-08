@@ -818,10 +818,20 @@ function openAddStockModal(sku) {
   const infoCont = document.getElementById("stock-product-info");
   
   infoCont.innerHTML = `
-    <img src="${p.image || 'https://via.placeholder.com/50?text=?'}" style="width: 60px; height: 60px; border-radius: 12px; object-fit: cover; border: 1px solid #e2e8f0;" />
+    <div style="position: relative;">
+      <img src="${p.image || 'https://via.placeholder.com/50?text=?'}" style="width: 80px; height: 80px; border-radius: 16px; object-fit: cover; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" />
+      <div style="position: absolute; bottom: -5px; right: -5px; background: #059669; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 2px solid #fff;"><i class="fas fa-box"></i></div>
+    </div>
     <div style="flex: 1;">
-      <div style="font-weight: 700; color: #1e293b; font-size: 1.1rem;">${p.name}</div>
-      <div style="font-size: 0.85rem; color: #64748b;">รหัส: ${p.sku} | สต็อกปัจจุบัน: <span style="font-weight: 800; color: #7c3aed;">${p.stock}</span></div>
+      <div style="font-weight: 700; color: #1e293b; font-size: 1.2rem; line-height: 1.2; margin-bottom: 4px;">${p.name}</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+        <span style="font-size: 0.75rem; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 6px; font-weight: 600;">รหัส: ${p.sku}</span>
+        <span style="font-size: 0.75rem; background: #ecfdf5; color: #059669; padding: 2px 8px; border-radius: 6px; font-weight: 600;">${p.category || 'ทั่วไป'}</span>
+      </div>
+      <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div style="font-size: 0.8rem; color: #64748b;">ราคาขาย: <span style="color: #7c3aed; font-weight: 700;">฿${Number(p.price).toLocaleString()}</span></div>
+        <div style="font-size: 0.8rem; color: #64748b;">คงเหลือ: <span style="font-weight: 800; color: ${p.stock <= settings.low_stock_threshold ? '#ef4444' : '#059669'};">${p.stock}</span> ชิ้น</div>
+      </div>
     </div>
   `;
   
