@@ -319,6 +319,7 @@ app.put("/api/products/:sku", authenticateToken, upload.single("image"), async (
 });
 
 app.post("/api/products/:sku/add-stock", authenticateToken, async (req, res) => {
+  console.log(`Add stock request received for SKU: ${req.params.sku}, Quantity: ${req.body.quantity}`);
   const { quantity } = req.body;
   const qty = parseInt(quantity);
   if (isNaN(qty) || qty <= 0) return res.status(400).json({ error: "จำนวนไม่ถูกต้อง" });

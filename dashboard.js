@@ -839,8 +839,11 @@ async function addStock(e) {
   const qty = document.getElementById("stock-qty").value;
   if (!qty || qty <= 0) return showToast("กรุณาใส่จำนวนที่ถูกต้อง", "warning");
   
+  const url = `/api/products/${encodeURIComponent(editProductSku)}/add-stock`;
+  console.log("Sending addStock request to:", url, "Quantity:", qty);
+  
   try {
-    const res = await fetch(`/api/products/${editProductSku}/add-stock`, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ quantity: qty })
@@ -852,12 +855,19 @@ async function addStock(e) {
       await loadData();
       renderInventory();
     } else {
-      const err = await res.json();
-      showToast(err.error || "ไม่สามารถเพิ่มสต็อกได้", "error");
+      let errorMsg = "ไม่สามารถเพิ่มสต็อกได้";
+      try {
+        const err = await res.json();
+        errorMsg = err.error || errorMsg;
+      } catch (e) {
+        errorMsg += ` (Status: ${res.status})`;
+      }
+      showToast(errorMsg, "error");
     }
   } catch (error) {
     console.error("Add stock failed:", error);
-    showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", "error");
+    // แสดง Error จริงๆ ออกมาดูว่าเป็นเพราะอะไร (เช่น TypeError: Failed to fetch)
+    showToast(`การเชื่อมต่อขัดข้อง: ${error.message}`, "error");
   }
 }
 
