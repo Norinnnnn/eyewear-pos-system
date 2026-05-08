@@ -1,3 +1,4 @@
+// Eyewear POS Dashboard - Version 1.0.6
 let currentUser = null;
 let products = [];
 let users = [];
