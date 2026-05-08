@@ -161,6 +161,7 @@ async function initializeDatabase() {
         total DECIMAL(12,2) NOT NULL,
         discount DECIMAL(12,2) DEFAULT 0,
         payment_method ENUM('cash', 'qr', 'transfer') DEFAULT 'cash',
+        is_voided TINYINT(1) DEFAULT 0,
         sold_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );`);
     settings: `
@@ -518,6 +519,33 @@ app.get("/api/orders/:id", authenticateToken, async (req, res) => {
       items: rows.map(r => ({ sku: r.sku, product_name: r.product_name, qty: r.qty, unit_price: r.unit_price, discount: r.discount, total: r.total }))
     });
   } catch (error) { handleError(res, error); }
+});
+
+app.delete("/api/orders/:id", authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: "เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถยกเลิกออเดอร์ได้" });
+  
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    
+    // Get items to restore stock
+    const [items] = await connection.query("SELECT sku, qty FROM sales WHERE order_id = ? AND is_voided = 0", [req.params.id]);
+    
+    for (const item of items) {
+      await connection.query("UPDATE products SET stock = stock + ? WHERE sku = ?", [item.qty, item.sku]);
+    }
+    
+    // Mark as voided
+    await connection.query("UPDATE sales SET is_voided = 1 WHERE order_id = ?", [req.params.id]);
+    
+    await connection.commit();
+    res.json({ message: "ยกเลิกออเดอร์และคืนสต็อกเรียบร้อย" });
+  } catch (error) {
+    await connection.rollback();
+    handleError(res, error);
+  } finally {
+    connection.release();
+  }
 });
 
 app.get("/api/settings", authenticateToken, async (req, res) => {

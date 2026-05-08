@@ -1156,13 +1156,28 @@ async function deleteType(id) {
 // --- Reports Page ---
 
 function renderReports() {
+  const activeSales = sales.filter(s => !s.is_voided);
   const orders = {};
+  
   sales.forEach(s => {
-    if (!orders[s.order_id]) orders[s.order_id] = { id: s.order_id, cust: s.customer_name || "-", seller: s.seller_name, total: 0, date: s.sold_at, items: 0 };
+    if (!orders[s.order_id]) {
+      orders[s.order_id] = { 
+        id: s.order_id, 
+        cust: s.customer_name || "-", 
+        seller: s.seller_name, 
+        total: 0, 
+        date: s.sold_at, 
+        items: 0, 
+        method: s.payment_method,
+        is_voided: s.is_voided 
+      };
+    }
     orders[s.order_id].total += Number(s.total);
     orders[s.order_id].items += s.qty;
   });
+  
   const list = Object.values(orders).sort((a,b) => new Date(b.date) - new Date(a.date));
+  const activeList = list.filter(o => !o.is_voided);
 
   document.getElementById("reports").innerHTML = `
     <div class="card"><h2><i class="fas fa-search"></i> ค้นหารายงาน</h2>
@@ -1176,24 +1191,24 @@ function renderReports() {
     
     <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
       <div class="metric-card" style="padding: 15px;">
-        <div style="font-size: 0.85rem; color: #64748b;">จำนวนรายการ (ที่พบ)</div>
-        <div style="font-size: 1.5rem; font-weight: 800; color: #1e293b;">${list.length} ออเดอร์</div>
+        <div style="font-size: 0.85rem; color: #64748b;">จำนวนรายการ (ปกติ)</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: #1e293b;">${activeList.length} ออเดอร์</div>
       </div>
       <div class="metric-card" style="padding: 15px; border-left: 5px solid #059669;">
-        <div style="font-size: 0.85rem; color: #64748b;">ยอดขายรวม (ที่พบ)</div>
-        <div style="font-size: 1.5rem; font-weight: 800; color: #059669;">฿${list.reduce((sum, o) => sum + o.total, 0).toLocaleString(undefined, {minimumFractionDigits:2})}</div>
+        <div style="font-size: 0.85rem; color: #64748b;">ยอดขายรวม (ปกติ)</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: #059669;">฿${activeList.reduce((sum, o) => sum + o.total, 0).toLocaleString(undefined, {minimumFractionDigits:2})}</div>
       </div>
       <div class="metric-card" style="padding: 15px; border-left: 5px solid #7c3aed;">
-        <div style="font-size: 0.85rem; color: #64748b;">กำไรเบื้องต้น (ที่พบ)</div>
-        <div style="font-size: 1.5rem; font-weight: 800; color: #7c3aed;">฿${sales.reduce((sum, s) => sum + (Number(s.total) - (Number(s.qty) * Number(products.find(p=>p.sku===s.sku)?.cost || 0))), 0).toLocaleString(undefined, {minimumFractionDigits:2})}</div>
+        <div style="font-size: 0.85rem; color: #64748b;">กำไรเบื้องต้น (ปกติ)</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: #7c3aed;">฿${activeSales.reduce((sum, s) => sum + (Number(s.total) - (Number(s.qty) * Number(products.find(p=>p.sku===s.sku)?.cost || 0))), 0).toLocaleString(undefined, {minimumFractionDigits:2})}</div>
       </div>
     </div>
 
     <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #e2e8f0;">
-      <h3 style="font-size: 0.95rem; margin-bottom: 15px; color: #475569;"><i class="fas fa-chart-pie"></i> แยกตามช่องทางชำระเงิน</h3>
+      <h3 style="font-size: 0.95rem; margin-bottom: 15px; color: #475569;"><i class="fas fa-chart-pie"></i> แยกตามช่องทางชำระเงิน (เฉพาะออเดอร์ปกติ)</h3>
       <div style="display: flex; gap: 20px; flex-wrap: wrap;">
         ${['cash', 'qr', 'transfer'].map(m => {
-          const mTotal = list.filter(o => o.method === m).reduce((s, o) => s + o.total, 0);
+          const mTotal = activeList.filter(o => o.method === m).reduce((s, o) => s + o.total, 0);
           const icon = m === 'cash' ? 'fa-money-bill-wave' : (m === 'qr' ? 'fa-qrcode' : 'fa-university');
           const label = m === 'cash' ? 'เงินสด' : (m === 'qr' ? 'QR Code' : 'โอนเงิน');
           const color = m === 'cash' ? '#059669' : (m === 'qr' ? '#be185d' : '#0284c7');
@@ -1208,20 +1223,25 @@ function renderReports() {
     </div>
 
     <div class="card"><div class="table-wrap"><table>
-      <thead><tr><th>เลขออเดอร์</th><th>วันที่</th><th>ชำระโดย</th><th>ลูกค้า</th><th>ผู้ขาย</th><th>รวม</th><th>ใบเสร็จ</th></tr></thead>
+      <thead><tr><th>เลขออเดอร์</th><th>วันที่</th><th>ชำระโดย</th><th>ลูกค้า</th><th>ผู้ขาย</th><th>รวม</th><th>จัดการ</th></tr></thead>
       <tbody>${list.length === 0 ? '<tr><td colspan="7" style="text-align: center; padding: 30px; color: #94a3b8;">ไม่พบข้อมูลออเดอร์</td></tr>' : 
         list.map(o => {
           const methodLabel = o.method === 'cash' ? 'เงินสด' : (o.method === 'qr' ? 'QR' : 'โอน');
           const methodClass = `method-badge-${o.method}`;
           return `
-          <tr>
-            <td style="font-family: monospace; font-weight: 600;">${o.id}</td>
+          <tr style="${o.is_voided ? 'opacity: 0.5; background: #f9fafb; text-decoration: line-through;' : ''}">
+            <td style="font-family: monospace; font-weight: 600;">${o.id} ${o.is_voided ? '<span style="color: #ef4444; font-size: 10px; text-decoration: none !important; display: block;">[ยกเลิกแล้ว]</span>' : ''}</td>
             <td>${new Date(o.date).toLocaleString("th-TH")}</td>
             <td><span class="badge ${methodClass}">${methodLabel}</span></td>
             <td>${o.cust}</td>
             <td>${o.seller}</td>
             <td style="font-weight: 700; color: #1e293b;">฿${o.total.toFixed(2)}</td>
-            <td><button onclick="generateReceiptPDF('${o.id}')" style="background: #10b981; color: white; padding: 5px 10px; border-radius: 6px; border: none; cursor: pointer;"><i class="fas fa-file-pdf"></i> ดู</button></td>
+            <td>
+              <div style="display: flex; gap: 5px;">
+                <button onclick="generateReceiptPDF('${o.id}')" style="background: #10b981; color: white; padding: 5px 10px; border-radius: 6px; border: none; cursor: pointer;" title="ดูใบเสร็จ"><i class="fas fa-file-pdf"></i></button>
+                ${(!o.is_voided && currentUser.role === 'admin') ? `<button onclick="voidOrder('${o.id}')" style="background: #ef4444; color: white; padding: 5px 10px; border-radius: 6px; border: none; cursor: pointer;" title="ยกเลิกออเดอร์"><i class="fas fa-ban"></i></button>` : ''}
+              </div>
+            </td>
           </tr>`;
         }).join("")}</tbody>
     </table></div></div>
@@ -1233,6 +1253,25 @@ function renderReports() {
       .method-badge-transfer { background: #f0f9ff; color: #0284c7; border: 1px solid #e0f2fe; }
     </style>
   `;
+}
+
+async function voidOrder(orderId) {
+  if (!confirm(`⚠️ ยืนยันการยกเลิกออเดอร์ [${orderId}]?\nการยกเลิกจะคืนสต็อกสินค้าและหักยอดขายออกจากระบบ (ทำย้อนกลับไม่ได้)`)) return;
+  
+  try {
+    const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
+    if (res.ok) {
+      showToast("ยกเลิกออเดอร์เรียบร้อย", "success");
+      await loadData();
+      renderReports();
+    } else {
+      const err = await res.json();
+      showToast(err.error || "ไม่สามารถยกเลิกออเดอร์ได้", "error");
+    }
+  } catch (error) {
+    console.error("Void order failed:", error);
+    showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", "error");
+  }
 }
 
 async function filterReports() {
