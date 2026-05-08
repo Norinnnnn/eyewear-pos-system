@@ -737,6 +737,13 @@ async function finalizeCheckout(totalAmount) {
     return showToast("ยอดเงินที่รับมาไม่เพียงพอ", "warning");
   }
 
+  // Prevent double click
+  const btn = event.target.closest('button');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังประมวลผล...';
+  }
+
   const phone = document.getElementById("pos-customer").value;
   const cust = customers.find(x => x.phone === phone);
   
@@ -765,10 +772,18 @@ async function finalizeCheckout(totalAmount) {
     } else {
       const err = await res.json();
       showToast(err.error || "เกิดข้อผิดพลาดในการขาย", "error");
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check-double"></i> ยืนยันการชำระเงิน';
+      }
     }
   } catch (error) {
     console.error("Checkout failed:", error);
     showToast("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้", "error");
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-check-double"></i> ยืนยันการชำระเงิน';
+    }
   }
 }
 

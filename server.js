@@ -150,7 +150,7 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );`,
     sales: `
-      await connection.query(`CREATE TABLE IF NOT EXISTS sales (
+      CREATE TABLE IF NOT EXISTS sales (
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         order_id VARCHAR(50),
         user_id INT UNSIGNED,
@@ -163,7 +163,7 @@ async function initializeDatabase() {
         payment_method ENUM('cash', 'qr', 'transfer') DEFAULT 'cash',
         is_voided TINYINT(1) DEFAULT 0,
         sold_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );`);
+      );`,
     settings: `
       CREATE TABLE IF NOT EXISTS settings (
         id TINYINT UNSIGNED PRIMARY KEY DEFAULT 1,
@@ -179,6 +179,17 @@ async function initializeDatabase() {
         is_active TINYINT(1) DEFAULT 1,
         applicable_skus TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );`,
+    prescriptions: `
+      CREATE TABLE IF NOT EXISTS prescriptions (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        customer_id INT UNSIGNED,
+        sph_r VARCHAR(10), cyl_r VARCHAR(10), axis_r VARCHAR(10),
+        sph_l VARCHAR(10), cyl_l VARCHAR(10), axis_l VARCHAR(10),
+        add_val VARCHAR(10), pd VARCHAR(10),
+        note TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
       );`,
     customers: `
       CREATE TABLE IF NOT EXISTS customers (
