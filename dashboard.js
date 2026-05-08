@@ -1448,7 +1448,10 @@ async function switchHistoryTab(tab, phone) {
           <div style="border: 1px solid #e2e8f0; border-radius: 16px; margin-bottom: 15px; padding: 15px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
               <div style="font-weight: 700; color: #1e293b;"><i class="far fa-calendar-alt"></i> ${new Date(p.created_at).toLocaleDateString("th-TH")}</div>
-              <button onclick="deletePrescription(${p.id}, '${phone}')" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 5px;"><i class="fas fa-trash-alt"></i></button>
+              <div style="display: flex; gap: 10px;">
+                <button onclick="generatePrescriptionPDF(${p.id}, '${phone}')" style="background: #eff6ff; color: #2563eb; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;"><i class="fas fa-print"></i> พิมพ์</button>
+                <button onclick="deletePrescription(${p.id}, '${phone}')" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 5px;"><i class="fas fa-trash-alt"></i></button>
+              </div>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
               <div style="background: #f8fafc; padding: 10px; border-radius: 12px;">
@@ -1572,6 +1575,91 @@ async function deletePrescription(id, phone) {
     }
   } catch (err) {
     showToast("ไม่สามารถลบได้", "error");
+  }
+}
+
+async function generatePrescriptionPDF(id, phone) {
+  try {
+    const res = await fetch(`/api/customers/${phone}/prescriptions`);
+    const presList = await res.json();
+    const p = presList.find(x => x.id === id);
+    const cust = customers.find(x => x.phone === phone);
+    
+    if (!p) return showToast("ไม่พบข้อมูล", "error");
+
+    const element = document.createElement("div");
+    element.style.padding = "40px";
+    element.style.background = "#fff";
+    element.style.fontFamily = "'Prompt', sans-serif";
+    
+    element.innerHTML = `
+      <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px;">
+        <h1 style="margin: 0;">ร้านแว่นตาอานนท์</h1>
+        <p style="margin: 5px 0;">บันทึกค่าสายตา (Optical Prescription)</p>
+      </div>
+      
+      <div style="margin-bottom: 30px; display: flex; justify-content: space-between;">
+        <div><strong>ชื่อลูกค้า:</strong> ${cust.name}</div>
+        <div><strong>วันที่ตรวจ:</strong> ${new Date(p.created_at).toLocaleDateString("th-TH")}</div>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+        <thead>
+          <tr style="background: #f1f5f9;">
+            <th style="border: 1px solid #333; padding: 10px;">ตา (Eye)</th>
+            <th style="border: 1px solid #333; padding: 10px;">Sph</th>
+            <th style="border: 1px solid #333; padding: 10px;">Cyl</th>
+            <th style="border: 1px solid #333; padding: 10px;">Axis</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="border: 1px solid #333; padding: 15px; text-align: center; font-weight: bold;">ขวา (R)</td>
+            <td style="border: 1px solid #333; padding: 15px; text-align: center;">${p.sph_r || '-'}</td>
+            <td style="border: 1px solid #333; padding: 15px; text-align: center;">${p.cyl_r || '-'}</td>
+            <td style="border: 1px solid #333; padding: 15px; text-align: center;">${p.axis_r || '-'}</td>
+          </tr>
+          <tr>
+            <td style="border: 1px solid #333; padding: 15px; text-align: center; font-weight: bold;">ซ้าย (L)</td>
+            <td style="border: 1px solid #333; padding: 15px; text-align: center;">${p.sph_l || '-'}</td>
+            <td style="border: 1px solid #333; padding: 15px; text-align: center;">${p.cyl_l || '-'}</td>
+            <td style="border: 1px solid #333; padding: 15px; text-align: center;">${p.axis_l || '-'}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="display: flex; gap: 50px; margin-bottom: 30px;">
+        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #ddd; flex: 1;">
+          <strong>ค่า ADD (อ่านหนังสือ):</strong> ${p.add_val || '-'}
+        </div>
+        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #ddd; flex: 1;">
+          <strong>ค่า PD (ระยะห่างตาดำ):</strong> ${p.pd || '-'}
+        </div>
+      </div>
+
+      ${p.note ? `<div style="border: 1px dashed #ccc; padding: 15px; margin-bottom: 30px;"><strong>หมายเหตุ:</strong> ${p.note}</div>` : ''}
+
+      <div style="margin-top: 100px; display: flex; justify-content: space-around;">
+        <div style="text-align: center;">
+          <div style="width: 150px; border-bottom: 1px solid #333; margin-bottom: 10px;"></div>
+          <p>ผู้ตรวจสายตา</p>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 150px; border-bottom: 1px solid #333; margin-bottom: 10px;"></div>
+          <p>ลูกค้า</p>
+        </div>
+      </div>
+    `;
+
+    const opt = { 
+      margin: 15,
+      filename: `Prescription-${cust.name}-${new Date(p.created_at).toISOString().split('T')[0]}.pdf`,
+      jsPDF: { unit: 'mm', format: 'a5', orientation: 'landscape' } 
+    };
+    await html2pdf().from(element).set(opt).save();
+    showToast("พิมพ์ใบค่าสายตาเรียบร้อย", "success");
+  } catch (err) {
+    showToast("ไม่สามารถพิมพ์ได้", "error");
   }
 }
 
