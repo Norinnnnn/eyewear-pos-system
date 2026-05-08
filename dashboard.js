@@ -255,6 +255,21 @@ function renderHome() {
           <button onclick="generateSalesReportPDF('month')" class="btn-secondary" style="padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: #0369a1; color: white; border: none;"><i class="fas fa-calendar-alt"></i><span>รายงานรายเดือน (PDF)</span></button>
         </div>
       </div>
+
+      <div class="card" style="margin: 0;">
+        <h2><i class="fas fa-fire"></i> สินค้าขายดี</h2>
+        <div style="margin-top: 1rem;">
+          ${topSelling.length === 0 ? "<p style='color: #666; text-align: center; padding: 20px;'>ยังไม่มีข้อมูลการขาย</p>" : 
+            topSelling.map((p, i) => `
+              <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: ${i === topSelling.length - 1 ? 'none' : '1px solid #eee'};">
+                <div style="width: 24px; height: 24px; background: #f3f4f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">${i+1}</div>
+                <div style="flex: 1;"><div>${p.name}</div><div style="font-size: 0.75rem; color: #666;">รหัสสินค้า: ${p.sku}</div></div>
+                <div style="font-weight: bold; color: #6366f1;">${p.qty} ชิ้น</div>
+              </div>
+            `).join("")}
+        </div>
+      </div>
+
       <div class="card" style="margin: 0;">
         <h2><i class="fas fa-receipt"></i> การขายล่าสุด</h2>
         <div style="margin-top: 1rem;">
@@ -377,6 +392,12 @@ function renderPOS() {
             <datalist id="cust-list-pos">${customers.map(c => `<option value="${c.phone}">${c.name}</option>`).join("")}</datalist>
           </div>
           <div id="pos-cust-info" style="margin: 10px 0; color: #7c3aed; font-weight: 500; height: 1.2rem;"></div>
+          
+          <div style="display: flex; gap: 8px; margin: 15px 0; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none;">
+            <button onclick="filterPOSByCategory('')" class="btn-category active" id="cat-all">ทั้งหมด</button>
+            ${productTypes.map(t => `<button onclick="filterPOSByCategory('${t.name}')" class="btn-category" id="cat-${t.id}">${t.name}</button>`).join("")}
+          </div>
+
           <div id="pos-product-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-top: 1rem; max-height: 500px; overflow-y: auto; padding: 5px;">
             ${renderPOSProductList(products)}
           </div>
@@ -425,6 +446,19 @@ function handlePOSCustomer(phone) {
   if (c) info.innerHTML = `<i class="fas fa-user-check"></i> ลูกค้าประจำ: <span style="color: #111827;">${c.name}</span>`;
   else if (phone.length >= 9) info.innerHTML = `<i class="fas fa-user-plus"></i> <span style="color: #059669;">ลูกค้าใหม่</span>: จะบันทึกเมื่อขายสำเร็จ`;
   else info.textContent = "";
+}
+
+function filterPOSByCategory(cat) {
+  // Update active button state
+  document.querySelectorAll(".btn-category").forEach(btn => btn.classList.remove("active"));
+  if (cat === "") document.getElementById("cat-all").classList.add("active");
+  else {
+    const type = productTypes.find(t => t.name === cat);
+    if (type) document.getElementById(`cat-${type.id}`)?.classList.add("active");
+  }
+
+  const filtered = cat === "" ? products : products.filter(p => p.category === cat);
+  document.getElementById("pos-product-grid").innerHTML = renderPOSProductList(filtered);
 }
 
 function addToCart(sku) {
