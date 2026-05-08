@@ -236,6 +236,13 @@ function renderHome() {
       </div>
     </div>
 
+    <div class="card" style="margin-top: 1.5rem;">
+      <h2 style="margin-bottom: 20px;"><i class="fas fa-chart-area"></i> แนวโน้มยอดขาย (7 วันล่าสุด)</h2>
+      <div style="height: 300px; position: relative;">
+        <canvas id="salesChart"></canvas>
+      </div>
+    </div>
+
     <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
       <div class="card" style="margin: 0;">
         <h2 style="display: flex; align-items: center; gap: 8px;"><i class="fas fa-bolt"></i> ทางลัดด่วน</h2>
@@ -285,6 +292,57 @@ function renderHome() {
       </div>
     ` : ""}
   `;
+  renderSalesChart();
+}
+
+function renderSalesChart() {
+  const ctx = document.getElementById('salesChart');
+  if (!ctx) return;
+
+  // Prepare data for the last 7 days
+  const labels = [];
+  const dataPoints = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toLocaleDateString();
+    labels.push(d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
+    
+    const daySales = sales.filter(s => new Date(s.sold_at).toLocaleDateString() === dateStr);
+    const dayRevenue = daySales.reduce((sum, s) => sum + Number(s.total || 0), 0);
+    dataPoints.push(dayRevenue);
+  }
+
+  if (window.myChart) window.myChart.destroy();
+  
+  window.myChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'ยอดขาย (บาท)',
+        data: dataPoints,
+        borderColor: '#7c3aed',
+        backgroundColor: 'rgba(124, 58, 237, 0.1)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#7c3aed',
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: { beginAtZero: true, grid: { borderDash: [5, 5] } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
 }
 
 async function updateThreshold() {
