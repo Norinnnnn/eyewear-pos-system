@@ -1189,13 +1189,49 @@ function renderReports() {
       </div>
     </div>
 
+    <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #e2e8f0;">
+      <h3 style="font-size: 0.95rem; margin-bottom: 15px; color: #475569;"><i class="fas fa-chart-pie"></i> แยกตามช่องทางชำระเงิน</h3>
+      <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        ${['cash', 'qr', 'transfer'].map(m => {
+          const mTotal = list.filter(o => o.method === m).reduce((s, o) => s + o.total, 0);
+          const icon = m === 'cash' ? 'fa-money-bill-wave' : (m === 'qr' ? 'fa-qrcode' : 'fa-university');
+          const label = m === 'cash' ? 'เงินสด' : (m === 'qr' ? 'QR Code' : 'โอนเงิน');
+          const color = m === 'cash' ? '#059669' : (m === 'qr' ? '#be185d' : '#0284c7');
+          return `
+            <div style="flex: 1; min-width: 150px; background: white; padding: 12px 20px; border-radius: 12px; border: 1px solid #f1f5f9;">
+              <div style="color: ${color}; font-size: 1.1rem; margin-bottom: 5px;"><i class="fas ${icon}"></i> <span style="font-weight: 700;">${label}</span></div>
+              <div style="font-size: 1.2rem; font-weight: 800; color: #1e293b;">฿${mTotal.toLocaleString(undefined, {minimumFractionDigits:2})}</div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    </div>
+
     <div class="card"><div class="table-wrap"><table>
-      <thead><tr><th>เลขออเดอร์</th><th>วันที่</th><th>ลูกค้า</th><th>ผู้ขาย</th><th>รวม</th><th>ใบเสร็จ</th></tr></thead>
-      <tbody>${list.length === 0 ? '<tr><td colspan="6" style="text-align: center; padding: 30px; color: #94a3b8;">ไม่พบข้อมูลออเดอร์</td></tr>' : 
-        list.map(o => `
-        <tr><td>${o.id}</td><td>${new Date(o.date).toLocaleString("th-TH")}</td><td>${o.cust}</td><td>${o.seller}</td><td>฿${o.total.toFixed(2)}</td>
-        <td><button onclick="generateReceiptPDF('${o.id}')" style="background: #10b981; color: white;"><i class="fas fa-file-pdf"></i> ดู</button></td></tr>`).join("")}</tbody>
+      <thead><tr><th>เลขออเดอร์</th><th>วันที่</th><th>ชำระโดย</th><th>ลูกค้า</th><th>ผู้ขาย</th><th>รวม</th><th>ใบเสร็จ</th></tr></thead>
+      <tbody>${list.length === 0 ? '<tr><td colspan="7" style="text-align: center; padding: 30px; color: #94a3b8;">ไม่พบข้อมูลออเดอร์</td></tr>' : 
+        list.map(o => {
+          const methodLabel = o.method === 'cash' ? 'เงินสด' : (o.method === 'qr' ? 'QR' : 'โอน');
+          const methodClass = `method-badge-${o.method}`;
+          return `
+          <tr>
+            <td style="font-family: monospace; font-weight: 600;">${o.id}</td>
+            <td>${new Date(o.date).toLocaleString("th-TH")}</td>
+            <td><span class="badge ${methodClass}">${methodLabel}</span></td>
+            <td>${o.cust}</td>
+            <td>${o.seller}</td>
+            <td style="font-weight: 700; color: #1e293b;">฿${o.total.toFixed(2)}</td>
+            <td><button onclick="generateReceiptPDF('${o.id}')" style="background: #10b981; color: white; padding: 5px 10px; border-radius: 6px; border: none; cursor: pointer;"><i class="fas fa-file-pdf"></i> ดู</button></td>
+          </tr>`;
+        }).join("")}</tbody>
     </table></div></div>
+
+    <style>
+      .badge { padding: 4px 10px; border-radius: 99px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+      .method-badge-cash { background: #ecfdf5; color: #059669; border: 1px solid #d1fae5; }
+      .method-badge-qr { background: #fdf2f8; color: #be185d; border: 1px solid #fce7f3; }
+      .method-badge-transfer { background: #f0f9ff; color: #0284c7; border: 1px solid #e0f2fe; }
+    </style>
   `;
 }
 
