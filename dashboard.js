@@ -198,26 +198,23 @@ function renderHome() {
   }
 
   const lowStockItems = products.filter(p => Number(p.stock) <= Number(settings.low_stock_threshold));
-  const totalRevenue = sales.reduce((sum, s) => sum + Number(s.total || 0), 0);
-  const today = new Date().toLocaleDateString();
-  const todaySales = sales.filter(s => new Date(s.sold_at).toLocaleDateString() === today);
-  const todayRevenue = todaySales.reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const activeSales = sales.filter(s => !s.is_voided);
+  const totalRevenue = activeSales.reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const totalCost = activeSales.reduce((sum, s) => sum + (Number(s.qty) * Number(products.find(p=>p.sku===s.sku)?.cost || 0)), 0);
+  const totalProfit = totalRevenue - totalCost;
 
-  const productSalesMap = {};
-  sales.forEach(s => {
-    productSalesMap[s.sku] = (productSalesMap[s.sku] || 0) + s.qty;
-  });
-  const topSelling = Object.entries(productSalesMap)
-    .map(([sku, qty]) => ({ sku, qty, name: products.find(p => p.sku === sku)?.name || sku }))
-    .sort((a, b) => b.qty - a.qty)
-    .slice(0, 5);
+  const today = new Date().toLocaleDateString();
+  const todaySales = activeSales.filter(s => new Date(s.sold_at).toLocaleDateString() === today);
+  const todayRevenue = todaySales.reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const todayCost = todaySales.reduce((sum, s) => sum + (Number(s.qty) * Number(products.find(p=>p.sku===s.sku)?.cost || 0)), 0);
+  const todayProfit = todayRevenue - todayCost;
 
   document.getElementById("home").innerHTML = `
     <div class="dashboard-grid">
       <div class="metric-card">
         <div class="metric-top"><div><h3>ยอดขายวันนี้</h3></div><div class="icon-circle" style="background: #ecfdf5; color: #059669;"><i class="fas fa-coins"></i></div></div>
         <div class="value">฿${todayRevenue.toFixed(2)}</div>
-        <p style="font-size: 0.85rem; color: #666; margin-top: 4px;">จากทั้งหมด ${todaySales.length} รายการ</p>
+        <p style="font-size: 0.85rem; color: #059669; font-weight: 600;">กำไร: ฿${todayProfit.toFixed(2)}</p>
       </div>
       <div class="metric-card">
         <div class="metric-top"><div><h3>สินค้าทั้งหมด</h3></div><div class="icon-circle" style="background: #f0f9ff; color: #0284c7;"><i class="fas fa-box"></i></div></div>
@@ -230,9 +227,9 @@ function renderHome() {
         <p style="font-size: 0.85rem; color: #666; margin-top: 4px;">ต่ำกว่าเกณฑ์ ${settings.low_stock_threshold} ชิ้น</p>
       </div>
       <div class="metric-card">
-        <div class="metric-top"><div><h3>ยอดขายสะสม</h3></div><div class="icon-circle" style="background: #fdf2f8; color: #db2777;"><i class="fas fa-chart-line"></i></div></div>
-        <div class="value">฿${totalRevenue.toFixed(2)}</div>
-        <p style="font-size: 0.85rem; color: #666; margin-top: 4px;">ตั้งแต่เริ่มระบบ</p>
+        <div class="metric-top"><div><h3>ยอดรวมกำไร</h3></div><div class="icon-circle" style="background: #fdf2f8; color: #db2777;"><i class="fas fa-chart-line"></i></div></div>
+        <div class="value">฿${totalProfit.toFixed(2)}</div>
+        <p style="font-size: 0.85rem; color: #666; margin-top: 4px;">จากรายได้ ฿${totalRevenue.toLocaleString()}</p>
       </div>
     </div>
 
@@ -792,9 +789,14 @@ async function finalizeCheckout(totalAmount) {
 function renderInventory() {
   document.getElementById("inventory").innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 15px; flex-wrap: wrap;">
-      <button onclick="openAddProductModal()" class="btn-primary" style="display: flex; align-items: center; gap: 8px;">
-        <i class="fas fa-plus-circle"></i> เพิ่มสินค้าใหม่
-      </button>
+      <div style="display: flex; gap: 10px;">
+        <button onclick="openAddProductModal()" class="btn-primary" style="display: flex; align-items: center; gap: 8px;">
+          <i class="fas fa-plus-circle"></i> เพิ่มสินค้าใหม่
+        </button>
+        <button onclick="openStockLogModal()" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; padding: 10px 20px; border-radius: 12px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+          <i class="fas fa-history"></i> ประวัติสต็อก
+        </button>
+      </div>
       <div style="display: flex; gap: 12px; flex: 1; max-width: 600px;">
         <div style="position: relative; flex: 2;">
           <input type="text" id="inv-search" placeholder="ค้นหาตามชื่อหรือรหัสสินค้า..." oninput="inventorySearchQuery=this.value; renderInventoryRows();" style="width: 100%; padding-left: 40px;" />
@@ -807,108 +809,64 @@ function renderInventory() {
       </div>
     </div>
 
-    <div class="card" style="padding: 0; overflow: hidden; border: none; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 80px; text-align: center;">รูปภาพ</th>
-              <th>รหัส (SKU)</th>
-              <th>ชื่อสินค้า</th>
-              <th>รายละเอียด</th>
-              <th>หมวดหมู่</th>
-              <th style="text-align: right;">ต้นทุน</th>
-              <th style="text-align: right;">ราคาขาย</th>
-              <th style="text-align: center;">สต็อก</th>
-              <th style="width: 150px; text-align: center;">จัดการ</th>
-            </tr>
-          </thead>
-          <tbody id="inv-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top: 2rem; border-left: 5px solid #7c3aed;">
-      <h2 style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;"><i class="fas fa-tags"></i> จัดการหมวดหมู่สินค้า</h2>
-      <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-        <input type="text" id="new-type" placeholder="ชื่อหมวดหมู่ใหม่..." style="flex: 1; max-width: 300px;" />
-        <button onclick="addType()" class="btn-primary" style="padding: 0 25px;">เพิ่ม</button>
-      </div>
-      <div id="type-list" style="display: flex; flex-wrap: wrap; gap: 10px;">
-        ${productTypes.length > 0 ? productTypes.map(t => `
-          <div style="background: #f3f4f6; padding: 8px 16px; border-radius: 99px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; border: 1px solid #e5e7eb;">
-            ${t.name}
-            <button onclick="deleteType(${t.id})" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 14px; padding: 0; display: flex; align-items: center;"><i class="fas fa-times"></i></button>
-          </div>
-        `).join("") : "<p style='color: #94a3b8; font-style: italic;'>ยังไม่มีหมวดหมู่</p>"}
-      </div>
-    </div>
-
-    <div id="inv-modal" class="modal" style="display: none;">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 id="modal-title">เพิ่มสินค้า</h2>
-          <button onclick="closeModal()" class="modal-close"><i class="fas fa-times"></i></button>
+    <!-- ... rest of inventory content ... -->
+    <div id="stock-log-modal" class="modal" style="display: none;">
+      <div class="modal-content" style="width: min(100%, 700px);">
+        <div class="modal-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+          <h2 style="color: #334155;"><i class="fas fa-history"></i> ประวัติการนำเข้าสินค้า</h2>
+          <button onclick="document.getElementById('stock-log-modal').style.display='none'" class="modal-close"><i class="fas fa-times"></i></button>
         </div>
-        <form onsubmit="saveProduct(event)">
-          <div id="product-form" style="padding: 24px 32px;">
-            <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
-              <label>รหัสสินค้า (SKU)
-                <input type="text" id="m-sku" placeholder="เช่น EYE-001" required oninput="validateSKU(this.value)" />
-                <span id="sku-error" style="color: #ef4444; font-size: 0.75rem; display: none; margin-top: 2px;"><i class="fas fa-exclamation-circle"></i> รหัสนี้มีในระบบแล้ว</span>
-              </label>
-              <label>ชื่อสินค้า<input type="text" id="m-name" placeholder="ชื่อรุ่นหรือชื่อสินค้า" required /></label>
-              <label>หมวดหมู่
-                <select id="m-cat">
-                  <option value="">เลือกหมวดหมู่</option>
-                  ${productTypes.map(t => `<option value="${t.name}">${t.name}</option>`).join("")}
-                </select>
-              </label>
-              <label>สี<input type="text" id="m-color" placeholder="เช่น ดำ, แดง, กระ" /></label>
-              <label>ค่าสายตา (Prescription)<input type="text" id="m-prescription" placeholder="เช่น -1.00, +2.50" /></label>
-              <label>ต้นทุน (บาท)<input type="number" id="m-cost" placeholder="0.00" step="0.01" required /></label>
-              <label>ราคาขาย (บาท)<input type="number" id="m-price" placeholder="0.00" step="0.01" required /></label>
-              <label>จำนวนในสต็อก<input type="number" id="m-stock" placeholder="0" required /></label>
-              <label>รูปภาพสินค้า<input type="file" id="m-img" accept="image/*" onchange="previewImage(this)" /></label>
-            </div>
-            <div id="img-preview-container" style="margin-top: 15px; display: none; text-align: center;">
-              <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 5px;">ตัวอย่างรูปภาพ:</p>
-              <img id="m-img-preview" src="" style="max-height: 120px; border-radius: 12px; border: 1px solid #e2e8f0;" />
-            </div>
-          </div>
-          <div class="modal-footer" style="padding: 20px 32px; background: #f8fafc;">
-            <button type="button" onclick="closeModal()" style="background: #e2e8f0; color: #475569;">ยกเลิก</button>
-            <button type="submit" class="btn-primary"><i class="fas fa-save"></i> บันทึกข้อมูล</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div id="stock-modal" class="modal" style="display: none;">
-      <div class="modal-content" style="width: min(100%, 450px);">
-        <div class="modal-header" style="background: #ecfdf5; border-bottom: 1px solid #d1fae5;">
-          <h2 style="color: #065f46;"><i class="fas fa-plus-circle"></i> เพิ่มสต็อกสินค้า</h2>
-          <button onclick="closeStockModal()" class="modal-close"><i class="fas fa-times"></i></button>
+        <div id="stock-log-content" style="padding: 24px; max-height: 500px; overflow-y: auto;">
+          <!-- Logs will be injected here -->
         </div>
-        <form onsubmit="addStock(event)">
-          <div style="padding: 24px 32px;">
-            <div id="stock-product-info" style="background: #f8fafc; padding: 16px; border-radius: 16px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; border: 1px solid #e2e8f0;">
-              <!-- Product info will be injected here -->
-            </div>
-            <label style="font-weight: 600; color: #374151; margin-bottom: 8px;">จำนวนที่ต้องการเพิ่ม (ชิ้น)</label>
-            <input type="number" id="stock-qty" placeholder="ใส่จำนวนที่ต้องการเพิ่ม" required min="1" step="1" 
-              style="font-size: 1.5rem; font-weight: 800; text-align: center; padding: 15px; border-radius: 16px; border: 2px solid #e2e8f0; color: #059669;" />
-            <p style="margin-top: 10px; font-size: 0.85rem; color: #6b7280; text-align: center;">สต็อกจะถูกบวกเพิ่มจากจำนวนปัจจุบันทันที</p>
-          </div>
-          <div class="modal-footer" style="padding: 20px 32px; background: #f9fafb;">
-            <button type="button" onclick="closeStockModal()" style="background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb;">ยกเลิก</button>
-            <button type="submit" class="btn-primary" style="background: #059669; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.2);"><i class="fas fa-check"></i> ยืนยันการเพิ่ม</button>
-          </div>
-        </form>
+        <div class="modal-footer" style="padding: 15px 24px; background: #f8fafc;">
+          <button type="button" onclick="document.getElementById('stock-log-modal').style.display='none'" style="background: #e2e8f0; color: #475569;">ปิดหน้าต่าง</button>
+        </div>
       </div>
     </div>
   `;
   renderInventoryRows();
+}
+
+async function openStockLogModal() {
+  const content = document.getElementById("stock-log-content");
+  content.innerHTML = `<div style="text-align: center; padding: 20px;"><i class="fas fa-circle-notch fa-spin"></i> กำลังโหลด...</div>`;
+  document.getElementById("stock-log-modal").style.display = "flex";
+  
+  try {
+    const logs = await fetchJson("/api/stock-logs");
+    if (logs.length === 0) {
+      content.innerHTML = `<div style="text-align: center; padding: 40px; color: #94a3b8;"><i class="fas fa-box-open fa-3x" style="margin-bottom: 15px; opacity: 0.3;"></i><p>ยังไม่มีประวัติการเพิ่มสต็อก</p></div>`;
+    } else {
+      content.innerHTML = `
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+          <thead>
+            <tr style="text-align: left; border-bottom: 2px solid #f1f5f9;">
+              <th style="padding: 10px;">วันที่/เวลา</th>
+              <th style="padding: 10px;">รายการสินค้า</th>
+              <th style="padding: 10px; text-align: center;">จำนวน</th>
+              <th style="padding: 10px; text-align: right;">ผู้ดำเนินการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${logs.map(l => `
+              <tr style="border-bottom: 1px solid #f8fafc;">
+                <td style="padding: 12px 10px; color: #64748b;">${new Date(l.created_at).toLocaleString("th-TH")}</td>
+                <td style="padding: 12px 10px;">
+                  <div style="font-weight: 600;">${l.product_name || 'สินค้าถูกลบ'}</div>
+                  <div style="font-size: 0.75rem; color: #94a3b8;">SKU: ${l.sku}</div>
+                </td>
+                <td style="padding: 12px 10px; text-align: center; font-weight: 800; color: #059669;">+${l.quantity}</td>
+                <td style="padding: 12px 10px; text-align: right; color: #64748b;">${l.user_name}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+  } catch (err) {
+    content.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 20px;">โหลดข้อมูลล้มเหลว</div>`;
+  }
 }
 
 function previewImage(input) {

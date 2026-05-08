@@ -191,6 +191,14 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
       );`,
+    stock_logs: `
+      CREATE TABLE IF NOT EXISTS stock_logs (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        sku VARCHAR(50),
+        user_id INT UNSIGNED,
+        quantity INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );`,
     customers: `
       CREATE TABLE IF NOT EXISTS customers (
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -342,9 +350,28 @@ app.post("/api/products/:sku/add-stock", authenticateToken, async (req, res) => 
   const qty = parseInt(quantity);
   if (isNaN(qty) || qty <= 0) return res.status(400).json({ error: "จำนวนไม่ถูกต้อง" });
   
+  const connection = await pool.getConnection();
   try {
-    await pool.query("UPDATE products SET stock = stock + ? WHERE sku = ?", [qty, req.params.sku]);
+    await connection.beginTransaction();
+    await connection.query("UPDATE products SET stock = stock + ? WHERE sku = ?", [qty, req.params.sku]);
+    await connection.query("INSERT INTO stock_logs (sku, user_id, quantity) VALUES (?, ?, ?)", [req.params.sku, req.user.id, qty]);
+    await connection.commit();
     res.json({ message: "เพิ่มสต็อกสำเร็จ" });
+  } catch (error) {
+    await connection.rollback();
+    handleError(res, error);
+  } finally {
+    connection.release();
+  }
+});
+
+app.get("/api/stock-logs", authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await pool.query(`SELECT sl.*, p.name as product_name, u.name as user_name FROM stock_logs sl 
+                                     LEFT JOIN products p ON sl.sku = p.sku 
+                                     LEFT JOIN users u ON sl.user_id = u.id 
+                                     ORDER BY sl.created_at DESC LIMIT 100`);
+    res.json(rows);
   } catch (error) { handleError(res, error); }
 });
 
