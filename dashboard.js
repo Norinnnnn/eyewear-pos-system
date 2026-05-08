@@ -1044,19 +1044,112 @@ async function filterReports() {
 function renderCustomers() {
   const editing = editingCustomerId ? customers.find(x => x.id === editingCustomerId) : null;
   document.getElementById("customers").innerHTML = `
-    <div class="card"><h2>${editing ? '<i class="fas fa-user-edit"></i> แก้ไขลูกค้า' : '<i class="fas fa-user-plus"></i> เพิ่มลูกค้า'}</h2>
-      <form onsubmit="saveCustomer(event)"><div class="grid">
-        <label>เบอร์โทร<input type="text" id="c-phone" value="${editing?.phone || ''}" required /></label>
-        <label>ชื่อลูกค้า<input type="text" id="c-name" value="${editing?.name || ''}" required /></label>
-      </div><button type="submit" class="btn-primary">${editing ? '<i class="fas fa-save"></i> บันทึก' : '<i class="fas fa-plus"></i> เพิ่ม'}</button>
-      ${editing ? `<button type="button" onclick="editingCustomerId=null; renderCustomers();" style="background: #94a3b8; color: white; margin-left: 10px;"><i class="fas fa-times"></i> ยกเลิก</button>` : ''}</form>
+    <div class="card"><h2>${editing ? '<i class="fas fa-user-edit"></i> แก้ไขข้อมูลลูกค้า' : '<i class="fas fa-user-plus"></i> เพิ่มลูกค้าใหม่'}</h2>
+      <form onsubmit="saveCustomer(event)"><div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+        <label>เบอร์โทรศัพท์<input type="text" id="c-phone" value="${editing?.phone || ''}" placeholder="เช่น 0812345678" required /></label>
+        <label>ชื่อ-นามสกุล<input type="text" id="c-name" value="${editing?.name || ''}" placeholder="ชื่อลูกค้า" required /></label>
+      </div>
+      <div style="margin-top: 15px;">
+        <button type="submit" class="btn-primary" style="padding: 10px 25px;">${editing ? '<i class="fas fa-save"></i> บันทึกการแก้ไข' : '<i class="fas fa-plus"></i> เพิ่มลูกค้า'}</button>
+        ${editing ? `<button type="button" onclick="editingCustomerId=null; renderCustomers();" style="background: #94a3b8; color: white; margin-left: 10px; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer;"><i class="fas fa-times"></i> ยกเลิก</button>` : ''}
+      </div>
+      </form>
     </div>
-    <div class="card"><div class="table-wrap"><table>
-      <thead><tr><th>เบอร์โทร</th><th>ชื่อ</th><th>จัดการ</th></tr></thead>
-      <tbody>${customers.map(c => `<tr><td>${c.phone}</td><td>${c.name}</td>
-        <td><button onclick="editingCustomerId=${c.id}; renderCustomers();" style="background: #eff6ff; color: #2563eb; padding: 8px; border-radius: 8px; margin-right: 5px;"><i class="fas fa-edit"></i></button><button onclick="delCustomer(${c.id})" style="background:#fef2f2; color: #ef4444; padding: 8px; border-radius: 8px;"><i class="fas fa-trash-alt"></i></button></td></tr>`).join("")}</tbody>
-    </table></div></div>
+    <div class="card" style="margin-top: 20px;">
+      <h2 style="margin-bottom: 20px;"><i class="fas fa-address-book"></i> รายชื่อลูกค้าทั้งหมด</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>เบอร์โทรศัพท์</th><th>ชื่อลูกค้า</th><th style="text-align: center;">จัดการ</th></tr></thead>
+        <tbody>${customers.length === 0 ? '<tr><td colspan="3" style="text-align: center; padding: 30px; color: #94a3b8;">ยังไม่มีข้อมูลลูกค้า</td></tr>' : 
+          customers.map(c => `<tr>
+            <td style="font-weight: 600; color: #7c3aed;">${c.phone}</td>
+            <td>${c.name}</td>
+            <td style="text-align: center;">
+              <div style="display: flex; gap: 8px; justify-content: center;">
+                <button onclick="viewCustomerHistory('${c.phone}')" style="background: #f0f9ff; color: #0284c7; padding: 8px 12px; border-radius: 8px; border: none; cursor: pointer;" title="ประวัติการซื้อ"><i class="fas fa-history"></i> ประวัติ</button>
+                <button onclick="editingCustomerId=${c.id}; renderCustomers();" style="background: #eff6ff; color: #2563eb; padding: 8px; border-radius: 8px; border: none; cursor: pointer;" title="แก้ไข"><i class="fas fa-edit"></i></button>
+                <button onclick="delCustomer(${c.id})" style="background:#fef2f2; color: #ef4444; padding: 8px; border-radius: 8px; border: none; cursor: pointer;" title="ลบ"><i class="fas fa-trash-alt"></i></button>
+              </div>
+            </td>
+          </tr>`).join("")}</tbody>
+      </table></div>
+    </div>
+
+    <div id="history-modal" class="modal" style="display: none;">
+      <div class="modal-content" style="width: min(100%, 700px);">
+        <div class="modal-header" style="background: #f0f9ff; border-bottom: 1px solid #e0f2fe;">
+          <h2 style="color: #0369a1;"><i class="fas fa-history"></i> ประวัติการซื้อสินค้า</h2>
+          <button onclick="closeHistoryModal()" class="modal-close"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="history-content" style="padding: 24px; max-height: 500px; overflow-y: auto;">
+          <!-- History will be injected here -->
+        </div>
+        <div class="modal-footer" style="padding: 15px 24px; background: #f8fafc;">
+          <button type="button" onclick="closeHistoryModal()" style="background: #e2e8f0; color: #475569;">ปิดหน้าต่าง</button>
+        </div>
+      </div>
+    </div>
   `;
+}
+
+function viewCustomerHistory(phone) {
+  const cust = customers.find(x => x.phone === phone);
+  if (!cust) return;
+
+  const modal = document.getElementById("history-modal");
+  const content = document.getElementById("history-content");
+  
+  const custSales = sales.filter(s => s.customer_phone === phone);
+  
+  if (custSales.length === 0) {
+    content.innerHTML = `
+      <div style="text-align: center; padding: 40px; color: #94a3b8;">
+        <i class="fas fa-shopping-basket fa-3x" style="margin-bottom: 15px; opacity: 0.3;"></i>
+        <p>ยังไม่พบประวัติการซื้อของลูกค้าท่านนี้</p>
+      </div>
+    `;
+  } else {
+    // Group by Order ID
+    const orders = {};
+    custSales.forEach(s => {
+      if (!orders[s.order_id]) orders[s.order_id] = { id: s.order_id, date: s.sold_at, items: [], total: 0 };
+      orders[s.order_id].items.push(s);
+      orders[s.order_id].total += Number(s.total);
+    });
+
+    const orderList = Object.values(orders).sort((a,b) => new Date(b.date) - new Date(a.date));
+
+    content.innerHTML = `
+      <div style="background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+        <div style="font-weight: 700; font-size: 1.1rem; color: #1e293b;">${cust.name}</div>
+        <div style="color: #64748b; font-size: 0.9rem;"><i class="fas fa-phone"></i> ${cust.phone}</div>
+      </div>
+      ${orderList.map(o => `
+        <div style="border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden;">
+          <div style="background: #f1f5f9; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0;">
+            <div style="font-weight: 600; font-size: 0.85rem;">ออเดอร์: ${o.id}</div>
+            <div style="font-size: 0.8rem; color: #64748b;">${new Date(o.date).toLocaleString("th-TH")}</div>
+          </div>
+          <div style="padding: 10px 15px;">
+            ${o.items.map(item => `
+              <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem;">
+                <span>${item.product_name || item.sku} x ${item.qty}</span>
+                <span style="font-weight: 600;">฿${Number(item.total).toLocaleString()}</span>
+              </div>
+            `).join("")}
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1; text-align: right; font-weight: 700; color: #7c3aed;">
+              ยอดรวม: ฿${o.total.toLocaleString()}
+            </div>
+          </div>
+        </div>
+      `).join("")}
+    `;
+  }
+  
+  modal.style.display = "flex";
+}
+
+function closeHistoryModal() {
+  document.getElementById("history-modal").style.display = "none";
 }
 
 async function saveCustomer(e) {
