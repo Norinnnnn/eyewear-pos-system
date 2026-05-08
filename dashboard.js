@@ -237,9 +237,19 @@ function renderHome() {
     </div>
 
     <div class="card" style="margin-top: 1.5rem;">
-      <h2 style="margin-bottom: 20px;"><i class="fas fa-chart-area"></i> แนวโน้มยอดขาย (7 วันล่าสุด)</h2>
-      <div style="height: 300px; position: relative;">
-        <canvas id="salesChart"></canvas>
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+        <div>
+          <h2 style="margin-bottom: 20px;"><i class="fas fa-chart-area"></i> แนวโน้มยอดขาย (7 วันล่าสุด)</h2>
+          <div style="height: 300px; position: relative;">
+            <canvas id="salesChart"></canvas>
+          </div>
+        </div>
+        <div>
+          <h2 style="margin-bottom: 20px;"><i class="fas fa-chart-pie"></i> สัดส่วนการขาย</h2>
+          <div style="height: 300px; position: relative;">
+            <canvas id="categoryChart"></canvas>
+          </div>
+        </div>
       </div>
     </div>
 
