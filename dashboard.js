@@ -1,3 +1,4 @@
+// Eyewear POS Dashboard - Version 1.0.8 (Final Peak Version)
 let currentUser = null;
 let products = [];
 let users = [];
@@ -23,12 +24,7 @@ function showToast(message, type = "success", title = "") {
   if (!container) return;
   const toast = document.createElement("div");
   toast.className = `toast toast-${type}`;
-  const icons = {
-    success: '<i class="fas fa-check-circle"></i>',
-    error: '<i class="fas fa-times-circle"></i>',
-    warning: '<i class="fas fa-exclamation-triangle"></i>',
-    info: '<i class="fas fa-info-circle"></i>'
-  };
+  const icons = { success: '<i class="fas fa-check-circle"></i>', error: '<i class="fas fa-times-circle"></i>', warning: '<i class="fas fa-exclamation-triangle"></i>', info: '<i class="fas fa-info-circle"></i>' };
   if (!title) title = type === "success" ? "สำเร็จ" : type === "error" ? "ข้อผิดพลาด" : "แจ้งเตือน";
   toast.innerHTML = `<div class="toast-icon">${icons[type] || '<i class="fas fa-bell"></i>'}</div><div class="toast-content"><div class="toast-title">${title}</div><div class="toast-message">${message}</div></div>`;
   container.appendChild(toast);
@@ -63,7 +59,7 @@ async function loadData() {
     ]);
     products = p; users = u; promotions = promo; customers = c; sales = s; settings = sett; productTypes = pt;
     return true;
-  } catch (error) { showToast("ไม่สามารถโหลดข้อมูลจากเซิร์ฟเวอร์ได้", "error"); return false; }
+  } catch (error) { showToast("ไม่สามารถโหลดข้อมูลได้", "error"); return false; }
 }
 
 // --- Page Routing ---
@@ -107,20 +103,19 @@ async function switchPage(pageName, button) {
 // --- Home Page ---
 
 function renderHome() {
-  const lowStockItems = products.filter(p => Number(p.stock) <= Number(settings.low_stock_threshold));
-  const activeSales = sales.filter(s => !s.is_voided);
-  const totalRevenue = activeSales.reduce((sum, s) => sum + Number(s.total || 0), 0);
-  const totalCost = activeSales.reduce((sum, s) => sum + (Number(s.qty) * Number(products.find(p=>p.sku===s.sku)?.cost || 0)), 0);
-  const totalProfit = totalRevenue - totalCost;
+  if (products.length === 0) {
+    document.getElementById("home").innerHTML = `<div class="card" style="text-align:center; padding:50px;"><h2>ยินดีต้อนรับ</h2><p>กรุณาเพิ่มสินค้าในเมนูคลังสินค้า</p></div>`;
+    return;
+  }
 
+  const lowStockItems = products.filter(p => Number(p.stock) <= Number(settings.low_stock_threshold));
+  const totalRevenue = sales.reduce((sum, s) => sum + Number(s.total || 0), 0);
   const today = new Date().toLocaleDateString();
-  const todaySales = activeSales.filter(s => new Date(s.sold_at).toLocaleDateString() === today);
+  const todaySales = sales.filter(s => new Date(s.sold_at).toLocaleDateString() === today);
   const todayRevenue = todaySales.reduce((sum, s) => sum + Number(s.total || 0), 0);
-  const todayCost = todaySales.reduce((sum, s) => sum + (Number(s.qty) * Number(products.find(p=>p.sku===s.sku)?.cost || 0)), 0);
-  const todayProfit = todayRevenue - todayCost;
 
   const productSalesMap = {};
-  activeSales.forEach(s => { productSalesMap[s.sku] = (productSalesMap[s.sku] || 0) + s.qty; });
+  sales.forEach(s => { productSalesMap[s.sku] = (productSalesMap[s.sku] || 0) + s.qty; });
   const topSelling = Object.entries(productSalesMap).map(([sku, qty]) => ({ sku, qty, name: products.find(p => p.sku === sku)?.name || sku })).sort((a, b) => b.qty - a.qty).slice(0, 5);
 
   document.getElementById("home").innerHTML = `
@@ -128,7 +123,7 @@ function renderHome() {
       <div class="metric-card">
         <div class="metric-top"><div><h3>ยอดขายวันนี้</h3></div><div class="icon-circle" style="background: #ecfdf5; color: #059669;"><i class="fas fa-coins"></i></div></div>
         <div class="value">฿${todayRevenue.toFixed(2)}</div>
-        <p style="font-size: 0.85rem; color: #059669; font-weight: 600;">กำไร: ฿${todayProfit.toFixed(2)}</p>
+        <p style="font-size: 0.85rem; color: #666; margin-top: 4px;">จากทั้งหมด ${todaySales.length} รายการ</p>
       </div>
       <div class="metric-card">
         <div class="metric-top"><div><h3>สินค้าทั้งหมด</h3></div><div class="icon-circle" style="background: #f0f9ff; color: #0284c7;"><i class="fas fa-box"></i></div></div>
@@ -141,9 +136,9 @@ function renderHome() {
         <p style="font-size: 0.85rem; color: #666; margin-top: 4px;">ต่ำกว่าเกณฑ์ ${settings.low_stock_threshold} ชิ้น</p>
       </div>
       <div class="metric-card">
-        <div class="metric-top"><div><h3>ยอดรวมกำไร</h3></div><div class="icon-circle" style="background: #fdf2f8; color: #db2777;"><i class="fas fa-chart-line"></i></div></div>
-        <div class="value">฿${totalProfit.toFixed(2)}</div>
-        <p style="font-size: 0.85rem; color: #666; margin-top: 4px;">จากรายได้ ฿${totalRevenue.toLocaleString()}</p>
+        <div class="metric-top"><div><h3>ยอดขายสะสม</h3></div><div class="icon-circle" style="background: #fdf2f8; color: #db2777;"><i class="fas fa-chart-line"></i></div></div>
+        <div class="value">฿${totalRevenue.toFixed(2)}</div>
+        <p style="font-size: 0.85rem; color: #666; margin-top: 4px;">ตั้งแต่เริ่มระบบ</p>
       </div>
     </div>
 
@@ -160,10 +155,8 @@ function renderHome() {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 1rem;">
           <button onclick="switchPage('pos')" class="btn-primary" style="padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: #6366f1;"><i class="fas fa-cash-register"></i><span>เปิดหน้าขาย (POS)</span></button>
           <button onclick="switchPage('inventory')" class="btn-primary" style="padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: #8b5cf6;"><i class="fas fa-plus-circle"></i><span>เพิ่มสินค้าใหม่</span></button>
-          <button onclick="switchPage('reports')" class="btn-secondary" style="padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px;"><i class="fas fa-file-invoice-dollar"></i><span>ดูรายงานการขาย</span></button>
-          <button onclick="switchPage('promotions')" class="btn-secondary" style="padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px;"><i class="fas fa-tags"></i><span>จัดการโปรโมชั่น</span></button>
+          <button onclick="switchPage('reports')" class="btn-secondary" style="padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px;"><i class="fas fa-file-invoice-dollar"></i><span>ดูรายงาน</span></button>
           <button onclick="generateSalesReportPDF('today')" class="btn-secondary" style="padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: #0ea5e9; color: white; border: none;"><i class="fas fa-calendar-day"></i><span>รายงานวันนี้ (PDF)</span></button>
-          <button onclick="generateSalesReportPDF('month')" class="btn-secondary" style="padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: #0369a1; color: white; border: none;"><i class="fas fa-calendar-alt"></i><span>รายงานรายเดือน (PDF)</span></button>
         </div>
       </div>
       <div class="card" style="margin: 0;">
@@ -175,7 +168,7 @@ function renderHome() {
       <div class="card" style="margin: 0;">
         <h2><i class="fas fa-receipt"></i> การขายล่าสุด</h2>
         <div style="margin-top: 1rem;">
-          ${[...new Map(activeSales.map(item => [item.order_id, item])).values()].slice(0, 5).map((s, i) => `
+          ${[...new Map(sales.map(item => [item.order_id, item])).values()].slice(0, 5).map((s, i) => `
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: ${i === 4 ? 'none' : '1px solid #f1f5f9'};">
               <div><div style="font-weight: 600; font-size: 0.9rem;">${s.order_id}</div><div style="font-size: 0.75rem; color: #64748b;">${new Date(s.sold_at).toLocaleTimeString('th-TH')}</div></div>
               <div style="text-align: right;"><div style="font-weight: 700; color: #059669;">฿${Number(s.total).toLocaleString()}</div><div style="font-size: 0.7rem; color: #94a3b8;">${s.customer_name || 'ลูกค้าทั่วไป'}</div></div>
@@ -192,11 +185,10 @@ function renderCharts() { renderSalesChart(); renderCategoryChart(); }
 function renderSalesChart() {
   const ctx = document.getElementById('salesChart'); if (!ctx) return;
   const labels = []; const dataPoints = [];
-  const activeSales = sales.filter(s => !s.is_voided);
   for (let i = 6; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i); const dateStr = d.toLocaleDateString();
     labels.push(d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
-    const daySales = activeSales.filter(s => new Date(s.sold_at).toLocaleDateString() === dateStr);
+    const daySales = sales.filter(s => new Date(s.sold_at).toLocaleDateString() === dateStr);
     dataPoints.push(daySales.reduce((sum, s) => sum + Number(s.total || 0), 0));
   }
   if (window.mySalesChart) window.mySalesChart.destroy();
@@ -205,7 +197,7 @@ function renderSalesChart() {
 
 function renderCategoryChart() {
   const ctx = document.getElementById('categoryChart'); if (!ctx) return;
-  const catMap = {}; sales.filter(s=>!s.is_voided).forEach(s => { const p = products.find(prod => prod.sku === s.sku); const cat = p?.category || 'ทั่วไป'; catMap[cat] = (catMap[cat] || 0) + Number(s.total); });
+  const catMap = {}; sales.forEach(s => { const p = products.find(prod => prod.sku === s.sku); const cat = p?.category || 'ทั่วไป'; catMap[cat] = (catMap[cat] || 0) + Number(s.total); });
   const labels = Object.keys(catMap); const data = Object.values(catMap);
   if (window.myCatChart) window.myCatChart.destroy();
   window.myCatChart = new Chart(ctx, { type: 'doughnut', data: { labels: labels, datasets: [{ data: data, backgroundColor: ['#7c3aed', '#059669', '#0284c7', '#ea580c', '#db2777'] }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom' } } } });
@@ -230,7 +222,7 @@ function renderPOS() {
           <datalist id="cust-list-pos">${customers.map(c => `<option value="${c.phone}">${c.name}</option>`).join("")}</datalist>
         </div>
         <div id="pos-cust-info" style="margin: 10px 0; color: #7c3aed; font-weight: 500; height: 1.2rem;"></div>
-        <div style="display: flex; gap: 8px; margin: 15px 0; overflow-x: auto; padding-bottom: 5px;">
+        <div style="display: flex; gap: 8px; margin: 15px 0; overflow-x: auto; padding-bottom: 5px; scrollbar-width:none;">
           <button onclick="filterPOSByCategory('')" class="btn-category active" id="cat-all">ทั้งหมด</button>
           ${productTypes.map(t => `<button onclick="filterPOSByCategory('${t.name}')" class="btn-category" id="cat-${t.id}">${t.name}</button>`).join("")}
         </div>
@@ -239,7 +231,7 @@ function renderPOS() {
         </div>
       </div>
       <div class="card" style="display: flex; flex-direction: column;">
-        <h2 style="display: flex; align-items: center; gap: 10px;"><i class="fas fa-shopping-basket"></i> ตะกร้าสินค้า</h2>
+        <h2 style="display: flex; align-items: center; gap: 10px;"><i class="fas fa-shopping-basket"></i> ตะกร้าสินค้า (<span id="cart-count">0</span>)</h2>
         <div id="cart-list" style="flex: 1; min-height: 200px; max-height: 400px; overflow-y: auto; margin-bottom: 15px;"></div>
         <div class="cart-total">
           <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem;"><span>ยอดรวม:</span><span>฿<span id="sub-val">0</span></span></div>
@@ -256,33 +248,36 @@ function renderPOS() {
 }
 
 function renderPOSProductList(items) {
+  if (items.length === 0) return `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">ไม่พบสินค้า</div>`;
   return items.map(p => `
     <div onclick="addToCart('${p.sku}')" style="border: 1px solid #eee; padding: 12px; border-radius: 16px; cursor: pointer; text-align: center; background: white; transition: 0.2s; position: relative;" onmouseover="this.style.borderColor='#7c3aed'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='#f0f0f0'; this.style.transform='translateY(0)'">
       <img src="${p.image || 'https://via.placeholder.com/150?text=?'}" style="width: 100%; height: 110px; object-fit: cover; border-radius: 12px;" />
       <div style="font-weight: 600; margin-top: 10px; font-size: 0.9rem; height: 2.4rem; overflow: hidden; line-height: 1.2;">${p.name}</div>
       <div style="color: #7c3aed; font-weight: 700; font-size: 1.1rem; margin-top: 5px;">฿${Number(p.price).toLocaleString()}</div>
       <div style="font-size: 0.75rem; color: #6b7280;">คลัง: ${p.stock}</div>
+      ${p.stock <= settings.low_stock_threshold ? `<div style="position: absolute; top: 8px; right: 8px; background: #ef4444; color: white; font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: bold; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);">สต็อกต่ำ</div>` : ""}
     </div>`).join("");
 }
 
 function handlePOSSearch(val) { const filtered = products.filter(p => p.name.toLowerCase().includes(val.toLowerCase()) || p.sku.toLowerCase().includes(val.toLowerCase())); document.getElementById("pos-product-grid").innerHTML = renderPOSProductList(filtered); }
 function handlePOSCustomer(phone) { const c = customers.find(x => x.phone === phone); const info = document.getElementById("pos-cust-info"); if (c) info.innerHTML = `<i class="fas fa-user-check"></i> ลูกค้าประจำ: ${c.name}`; else if (phone.length>=9) info.innerHTML = `<i class="fas fa-user-plus"></i> ลูกค้าใหม่: จะบันทึกเมื่อขายเสร็จ`; else info.textContent = ""; }
-function filterPOSByCategory(cat) { document.querySelectorAll(".btn-category").forEach(btn => btn.classList.remove("active")); const filtered = cat === "" ? products : products.filter(p => p.category === cat); document.getElementById("pos-product-grid").innerHTML = renderPOSProductList(filtered); }
+function filterPOSByCategory(cat) { document.querySelectorAll(".btn-category").forEach(btn => btn.classList.remove("active")); if(cat==="") document.getElementById("cat-all").classList.add("active"); else { const type = productTypes.find(t=>t.name===cat); if(type) document.getElementById(`cat-${type.id}`)?.classList.add("active"); } const filtered = cat === "" ? products : products.filter(p => p.category === cat); document.getElementById("pos-product-grid").innerHTML = renderPOSProductList(filtered); }
 function addToCart(sku) { const p = products.find(x => x.sku === sku); if (!p) return; const item = cart.find(x => x.sku === sku); if (item) { if (item.qty + 1 > p.stock) return showToast("สต็อกไม่พอ", "warning"); item.qty++; } else { if (p.stock < 1) return showToast("สินค้าหมด", "error"); cart.push({ sku, name: p.name, price: Number(p.price), qty: 1 }); } renderCart(); }
+
 function renderCart() {
-  let sub = 0, disc = 0;
+  let sub = 0, disc = 0, count = 0;
   const html = cart.map((item, i) => {
     const promo = promotions.filter(p => p.is_active).find(pr => { const skus = pr.applicable_skus ? pr.applicable_skus.split(",").map(s => s.trim()) : []; return (skus.length === 0 || skus.includes(item.sku)) && item.qty >= pr.min_qty; });
     let itemDisc = promo ? (promo.discount_type === "fixed" ? Number(promo.discount_value) : (item.price * Number(promo.discount_value) / 100)) : 0;
-    sub += item.price * item.qty; disc += itemDisc * item.qty;
-    return `<div style="display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center; background:#f8fafc; padding:8px; border-radius:12px;">
+    sub += item.price * item.qty; disc += itemDisc * item.qty; count += item.qty;
+    return `<div style="display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center; background:#f8fafc; padding:10px; border-radius:12px;">
       <div style="flex:1;"><div style="font-weight:600; font-size:0.85rem;">${item.name}</div><div style="font-size:0.75rem; color:#999;">฿${item.price.toLocaleString()} x ${item.qty}</div></div>
       <div style="font-weight:700; margin-right:10px; color:#7c3aed;">฿${((item.price - itemDisc) * item.qty).toLocaleString()}</div>
       <button onclick="removeFromCart(${i})" style="color: #ef4444; border: none; background: none; cursor: pointer; font-size:1.1rem;"><i class="fas fa-times"></i></button>
     </div>`;
   }).join("");
   document.getElementById("cart-list").innerHTML = html || `<div style="text-align:center; color:#94a3b8; padding:40px;">ตะกร้าว่าง</div>`;
-  document.getElementById("sub-val").textContent = sub.toLocaleString(); document.getElementById("disc-val").textContent = disc.toLocaleString(); document.getElementById("total-val").textContent = (sub - disc).toLocaleString();
+  document.getElementById("sub-val").textContent = sub.toLocaleString(); document.getElementById("disc-val").textContent = disc.toLocaleString(); document.getElementById("total-val").textContent = (sub - disc).toLocaleString(); document.getElementById("cart-count").textContent = count;
 }
 function removeFromCart(idx) { cart.splice(idx, 1); renderCart(); }
 
@@ -299,7 +294,7 @@ async function checkout() {
     <div class="modal-content" style="width: min(100%, 450px);">
       <div class="modal-header" style="background:#fdf2f8;"><h2>ชำระเงิน</h2><button onclick="document.getElementById('payment-modal').style.display='none'" class="modal-close">x</button></div>
       <div style="padding: 24px;">
-        <div style="text-align: center; margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 16px;">
+        <div style="text-align: center; margin-bottom: 25px; background: #f8fafc; padding: 20px; border-radius: 16px;">
           <div style="font-size: 0.9rem; color: #64748b;">ยอดสุทธิ</div>
           <div style="font-size: 2.2rem; font-weight: 800; color: #7c3aed;">฿${total.toLocaleString()}</div>
         </div>
@@ -343,7 +338,7 @@ function renderInventory() {
         <button onclick="openStockLogModal()" style="background: #f1f5f9; padding: 10px 20px; border-radius: 12px; cursor: pointer; border: 1px solid #ddd; font-weight:600; display:flex; align-items:center; gap:8px;"><i class="fas fa-history"></i> ประวัติสต็อก</button>
       </div>
       <div style="flex:1; max-width:400px; position:relative;">
-        <input type="text" id="inv-search" placeholder="ค้นหาชื่อหรือรหัส (SKU)..." oninput="inventorySearchQuery=this.value; renderInventoryRows();" style="width: 100%; padding-left:40px; border-radius:12px;" />
+        <input type="text" id="inv-search" placeholder="ค้นหาชื่อหรือรหัส (SKU)..." oninput="inventorySearchQuery=this.value; renderInventoryRows();" style="width: 100%; padding-left:40px; border-radius:12px; border:1px solid #ddd;" />
         <span style="position:absolute; left:15px; top:50%; transform:translateY(-50%); color:#94a3b8;"><i class="fas fa-search"></i></span>
       </div>
     </div>
@@ -357,16 +352,30 @@ function renderInventory() {
         </table>
       </div>
     </div>
+
+    <div class="card" style="margin-top: 2rem; border-left: 5px solid #7c3aed;">
+      <h2 style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;"><i class="fas fa-tags"></i> จัดการหมวดหมู่สินค้า</h2>
+      <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+        <input type="text" id="new-type" placeholder="ชื่อหมวดหมู่ใหม่..." style="flex: 1; max-width: 300px;" />
+        <button onclick="addType()" class="btn-primary" style="padding: 0 25px;">เพิ่มหมวดหมู่</button>
+      </div>
+      <div id="type-list" style="display: flex; flex-wrap: wrap; gap: 10px;">
+        ${productTypes.map(t => `<div style="background: #f3f4f6; padding: 8px 16px; border-radius: 99px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; border: 1px solid #e5e7eb;">${t.name}<button onclick="deleteType(${t.id})" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 14px; padding: 0; display: flex; align-items: center;"><i class="fas fa-times"></i></button></div>`).join("") || "ไม่มีหมวดหมู่"}
+      </div>
+    </div>
+
     <div id="inv-modal" class="modal" style="display: none;"><div class="modal-content"><div class="modal-header"><h2 id="modal-title">ข้อมูลสินค้า</h2><button onclick="closeModal()">x</button></div>
       <form onsubmit="saveProduct(event)"><div style="padding: 24px;" class="grid">
-        <label>SKU<input type="text" id="m-sku" required /></label>
+        <label>รหัสสินค้า (SKU)<input type="text" id="m-sku" required /></label>
         <label>ชื่อสินค้า<input type="text" id="m-name" required /></label>
         <label>หมวดหมู่<select id="m-cat">${productTypes.map(t => `<option value="${t.name}">${t.name}</option>`).join("")}</select></label>
-        <label>ราคาขาย<input type="number" id="m-price" required step="0.01" /></label>
+        <label>ราคาขาย (บาท)<input type="number" id="m-price" required step="0.01" /></label>
         <label>สต็อก<input type="number" id="m-stock" required /></label>
-        <label>ต้นทุน<input type="number" id="m-cost" step="0.01" /></label>
+        <label>ต้นทุน (บาท)<input type="number" id="m-cost" step="0.01" /></label>
+        <label>สี<input type="text" id="m-color" /></label>
+        <label>ค่าสายตา<input type="text" id="m-prescription" /></label>
         <label>รูปภาพ<input type="file" id="m-img" accept="image/*" /></label>
-      </div><div class="modal-footer"><button type="submit" class="btn-primary">บันทึก</button></div></form>
+      </div><div class="modal-footer" style="padding:15px 32px; background:#f9fafb;"><button type="button" onclick="closeModal()">ยกเลิก</button><button type="submit" class="btn-primary">บันทึก</button></div></form>
     </div></div>
     <div id="stock-modal" class="modal" style="display: none;"><div class="modal-content" style="width: min(100%, 400px);"><div class="modal-header" style="background:#ecfdf5;"><h2>เพิ่มสต็อก</h2><button onclick="closeStockModal()">x</button></div>
       <form onsubmit="addStock(event)"><div id="stock-product-info" style="padding: 20px; background:#f8fafc; border-bottom:1px solid #eee;"></div><div style="padding: 24px;"><input type="number" id="stock-qty" required placeholder="จำนวนที่เพิ่ม" style="width: 100%; text-align: center; font-size: 2.2rem; border: 2px solid #7c3aed; border-radius: 16px; color:#7c3aed; font-weight:800;" /></div>
@@ -393,96 +402,80 @@ function renderInventoryRows() {
     </div></td></tr>`).join("");
 }
 
-function openAddProductModal() { editProductSku = null; document.getElementById("modal-title").textContent = "เพิ่มสินค้าใหม่"; document.getElementById("m-sku").value = ""; document.getElementById("m-sku").readOnly = false; document.getElementById("m-name").value = ""; document.getElementById("m-price").value = ""; document.getElementById("m-stock").value = ""; document.getElementById("inv-modal").style.display = "flex"; }
-function editProduct(sku) { const p = products.find(x => x.sku === sku); if (!p) return; editProductSku = sku; document.getElementById("modal-title").textContent = "แก้ไขข้อมูลสินค้า"; document.getElementById("m-sku").value = p.sku; document.getElementById("m-sku").readOnly = true; document.getElementById("m-name").value = p.name; document.getElementById("m-price").value = p.price; document.getElementById("m-stock").value = p.stock; document.getElementById("m-cat").value = p.category || ""; document.getElementById("m-cost").value = p.cost || 0; document.getElementById("inv-modal").style.display = "flex"; }
+async function addType() { const input = document.getElementById("new-type"); const name = input.value.trim(); if(!name) return; await fetch("/api/product-types", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }); input.value = ""; await loadData(); renderInventory(); }
+async function deleteType(id) { if(!confirm("ลบหมวดหมู่?")) return; await fetch(`/api/product-types/${id}`, { method: "DELETE" }); await loadData(); renderInventory(); }
+
+function openAddProductModal() { editProductSku = null; document.getElementById("modal-title").textContent = "เพิ่มสินค้าใหม่"; document.getElementById("m-sku").value = ""; document.getElementById("m-sku").readOnly = false; document.getElementById("m-name").value = ""; document.getElementById("m-price").value = ""; document.getElementById("m-stock").value = ""; document.getElementById("m-color").value = ""; document.getElementById("m-prescription").value = ""; document.getElementById("m-cost").value = ""; document.getElementById("inv-modal").style.display = "flex"; }
+function editProduct(sku) { const p = products.find(x => x.sku === sku); if (!p) return; editProductSku = sku; document.getElementById("modal-title").textContent = "แก้ไขข้อมูลสินค้า"; document.getElementById("m-sku").value = p.sku; document.getElementById("m-sku").readOnly = true; document.getElementById("m-name").value = p.name; document.getElementById("m-price").value = p.price; document.getElementById("m-stock").value = p.stock; document.getElementById("m-cat").value = p.category || ""; document.getElementById("m-cost").value = p.cost || 0; document.getElementById("m-color").value = p.color || ""; document.getElementById("m-prescription").value = p.prescription || ""; document.getElementById("inv-modal").style.display = "flex"; }
 function closeModal() { document.getElementById("inv-modal").style.display = "none"; }
 function openAddStockModal(sku) { const p = products.find(x => x.sku === sku); if (!p) return; editProductSku = sku; const modal = document.getElementById("stock-modal"); document.getElementById("stock-product-info").innerHTML = `<div style="display:flex; gap:12px; align-items:center;"><img src="${p.image || 'https://via.placeholder.com/50'}" style="width:50px; height:50px; border-radius:8px; object-fit:cover;" /><div><div style="font-weight:700; color:#1e293b;">${p.name}</div><div style="font-size:0.8rem; color:#64748b;">SKU: ${p.sku} | ปัจจุบัน: <span style="font-weight:800; color:#7c3aed;">${p.stock}</span></div></div></div>`; document.getElementById("stock-qty").value = ""; modal.style.display = "flex"; setTimeout(() => document.getElementById("stock-qty").focus(), 100); }
 function closeStockModal() { document.getElementById("stock-modal").style.display = "none"; }
 async function addStock(e) { e.preventDefault(); const qty = document.getElementById("stock-qty").value; try { const res = await fetch(`/api/products/${encodeURIComponent(editProductSku)}/add-stock`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quantity: qty }) }); if (res.ok) { showToast(`เพิ่มสำเร็จ (+${qty})`, "success"); closeStockModal(); await loadData(); renderInventory(); } } catch (e) { showToast("ล้มเหลว", "error"); } }
-async function saveProduct(e) { e.preventDefault(); const fd = new FormData(); fd.append("sku", document.getElementById("m-sku").value); fd.append("name", document.getElementById("m-name").value); fd.append("category", document.getElementById("m-cat").value); fd.append("price", document.getElementById("m-price").value); fd.append("stock", document.getElementById("m-stock").value); fd.append("cost", document.getElementById("m-cost").value); const imgFile = document.getElementById("m-img").files[0]; if (imgFile) fd.append("image", imgFile); const url = editProductSku ? `/api/products/${editProductSku}` : "/api/products"; try { const res = await fetch(url, { method: editProductSku ? "PUT" : "POST", body: fd }); if (res.ok) { showToast("สำเร็จ"); closeModal(); await loadData(); renderInventory(); } } catch (error) { showToast("ล้มเหลว", "error"); } }
+async function saveProduct(e) { e.preventDefault(); const fd = new FormData(); fd.append("sku", document.getElementById("m-sku").value); fd.append("name", document.getElementById("m-name").value); fd.append("category", document.getElementById("m-cat").value); fd.append("price", document.getElementById("m-price").value); fd.append("stock", document.getElementById("m-stock").value); fd.append("cost", document.getElementById("m-cost").value); fd.append("color", document.getElementById("m-color").value); fd.append("prescription", document.getElementById("m-prescription").value); const imgFile = document.getElementById("m-img").files[0]; if (imgFile) fd.append("image", imgFile); const url = editProductSku ? `/api/products/${editProductSku}` : "/api/products"; try { const res = await fetch(url, { method: editProductSku ? "PUT" : "POST", body: fd }); if (res.ok) { showToast("สำเร็จ"); closeModal(); await loadData(); renderInventory(); } } catch (error) { showToast("ล้มเหลว", "error"); } }
 async function delProduct(sku) { if (!confirm(`ยืนยันการลบ [${sku}]?`)) return; try { const res = await fetch(`/api/products/${sku}`, { method: "DELETE" }); if (res.ok) { showToast("ลบสำเร็จ"); await loadData(); renderInventory(); } } catch (error) { showToast("ล้มเหลว", "error"); } }
 async function openStockLogModal() { const content = document.getElementById("stock-log-content"); content.innerHTML = '<div style="text-align:center;"><i class="fas fa-circle-notch fa-spin"></i></div>'; document.getElementById("stock-log-modal").style.display = "flex"; try { const logs = await fetchJson("/api/stock-logs"); content.innerHTML = `<table style="width:100%; border-collapse:collapse; font-size:0.9rem;"><thead style="background:#f8fafc;"><tr><th style="padding:12px; text-align:left;">วันที่/เวลา</th><th style="padding:12px; text-align:left;">สินค้า</th><th style="padding:12px; text-align:center;">จำนวน</th><th style="padding:12px; text-align:right;">โดย</th></tr></thead><tbody>${logs.map(l => `<tr style="border-bottom:1px solid #f8fafc;"><td style="padding:12px; color:#64748b;">${new Date(l.created_at).toLocaleString("th-TH")}</td><td style="padding:12px; font-weight:600;">${l.product_name || l.sku}</td><td style="padding:12px; text-align:center; font-weight:800; color:#059669;">+${l.quantity}</td><td style="padding:12px; text-align:right; color:#64748b;">${l.user_name}</td></tr>`).join("")}</tbody></table>` || "ไม่มีประวัติ"; } catch (err) { content.innerHTML = "ล้มเหลว"; } }
 
 // --- Reports Page ---
 
 function renderReports() {
-  const orders = {}; sales.forEach(s => { if (!orders[s.order_id]) orders[s.order_id] = { id: s.order_id, cust: s.customer_name || "-", total: 0, date: s.sold_at, method: s.payment_method, is_voided: s.is_voided }; orders[s.order_id].total += Number(s.total); });
+  const orders = {}; sales.forEach(s => { if (!orders[s.order_id]) orders[s.order_id] = { id: s.order_id, cust: s.customer_name || "-", total: 0, date: s.sold_at, method: s.payment_method }; orders[s.order_id].total += Number(s.total); });
   const list = Object.values(orders).sort((a,b) => new Date(b.date) - new Date(a.date));
-  const activeSales = sales.filter(s => !s.is_voided);
-
   document.getElementById("reports").innerHTML = `
     <div class="card"><h2><i class="fas fa-search"></i> ค้นหารายงาน</h2>
       <div class="grid" style="grid-template-columns: 1fr 1fr 1fr auto; gap: 10px;">
-        <input type="date" id="rep-start" /><input type="date" id="rep-end" /><input type="text" id="rep-search" placeholder="เลขออเดอร์หรือชื่อลูกค้า..." /><button onclick="filterReports()" class="btn-primary" style="padding: 0 30px;">ค้นหา</button>
+        <input type="date" id="rep-start" /><input type="date" id="rep-end" /><input type="text" id="rep-search" placeholder="เลขออเดอร์หรือลูกค้า..." /><button onclick="filterReports()" class="btn-primary" style="padding: 0 30px;">ค้นหา</button>
       </div>
     </div>
-    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top:1.5rem; margin-bottom:1.5rem;">
-      <div class="metric-card" style="padding:15px; border-left:5px solid #059669;">ยอดขายรวม (ปกติ): ฿${list.filter(o=>!o.is_voided).reduce((sum,o)=>sum+o.total, 0).toLocaleString(undefined, {minimumFractionDigits:2})}</div>
-      <div class="metric-card" style="padding:15px; border-left:5px solid #7c3aed;">กำไรเบื้องต้น (ปกติ): ฿${activeSales.reduce((sum, s) => sum + (Number(s.total) - (Number(s.qty) * Number(products.find(p=>p.sku===s.sku)?.cost || 0))), 0).toLocaleString(undefined, {minimumFractionDigits:2})}</div>
-    </div>
-    <div class="card" style="padding: 0; overflow: hidden; border:none; box-shadow: var(--shadow);">
+    <div class="card" style="padding: 0; overflow: hidden; margin-top:20px; border:none; box-shadow:var(--shadow);">
       <div class="table-wrap"><table>
-        <thead style="background:#f8fafc;"><tr><th>เลขออเดอร์</th><th>วันที่/เวลา</th><th>ชำระโดย</th><th>ลูกค้า</th><th style="text-align:right;">ยอดรวมสุทธิ</th><th style="text-align:center;">จัดการ</th></tr></thead>
-        <tbody>${list.map(o => `
-          <tr style="${o.is_voided ? 'opacity:0.5; text-decoration:line-through; background:#f9fafb;' : ''}">
-            <td style="font-family:monospace; font-weight:700;">${o.id} ${o.is_voided ? '<span style="color:red; font-size:10px;">[ยกเลิกแล้ว]</span>' : ''}</td>
-            <td>${new Date(o.date).toLocaleString("th-TH")}</td>
-            <td><span class="badge" style="background:#f1f5f9; color:#475569;">${o.method || 'cash'}</span></td>
-            <td>${o.cust}</td>
-            <td style="text-align:right; font-weight:700;">฿${o.total.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
-            <td style="text-align:center;"><div style="display:flex; gap:5px; justify-content:center;">
-              <button onclick="generateReceiptPDF('${o.id}')" style="background:#10b981; color:white; border:none; padding:6px 12px; border-radius:8px; cursor:pointer;"><i class="fas fa-file-pdf"></i></button>
-              ${(!o.is_voided && currentUser.role === 'admin') ? `<button onclick="voidOrder('${o.id}')" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:8px; cursor:pointer;"><i class="fas fa-ban"></i></button>` : ''}
-            </div></td></tr>`).join("")}
-        </tbody></table></div></div>
+        <thead style="background:#f8fafc;"><tr><th>เลขออเดอร์</th><th>วันที่/เวลา</th><th>ชำระโดย</th><th>ลูกค้า</th><th style="text-align:right;">ยอดรวมสุทธิ</th><th style="text-align:center;">ใบเสร็จ</th></tr></thead>
+        <tbody>${list.map(o => `<tr><td style="font-family:monospace; font-weight:700;">${o.id}</td><td>${new Date(o.date).toLocaleString("th-TH")}</td><td><span class="badge" style="background:#f1f5f9; color:#475569;">${o.method || 'cash'}</span></td><td>${o.cust}</td><td style="text-align:right; font-weight:700;">฿${o.total.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+          <td style="text-align:center;"><button onclick="generateReceiptPDF('${o.id}')" style="background:#10b981; color:white; border:none; padding:6px 12px; border-radius:8px; cursor:pointer;"><i class="fas fa-file-pdf"></i></button></td></tr>`).join("")}</tbody>
+      </table></div></div>
   `;
 }
+async function filterReports() { const start = document.getElementById("rep-start").value, end = document.getElementById("rep-end").value, q = document.getElementById("rep-search").value; let url = `/api/sales?`; if (start) url += `start_date=${start}&`; if (end) url += `end_date=${end}&`; if (q) url += `search=${encodeURIComponent(q)}&`; sales = await fetchJson(url); renderReports(); }
 
-async function voidOrder(orderId) {
-  if (!confirm(`⚠️ ยืนยันการยกเลิกออเดอร์ [${orderId}]?\nการยกเลิกจะคืนสต็อกสินค้าและหักยอดขายออกจากระบบ (ทำย้อนกลับไม่ได้)`)) return;
-  try {
-    const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
-    if (res.ok) { showToast("ยกเลิกเรียบร้อย", "success"); await loadData(); renderReports(); }
-    else { const err = await res.json(); showToast(err.error || "ล้มเหลว", "error"); }
-  } catch (e) { showToast("การเชื่อมต่อขัดข้อง", "error"); }
+// --- Users & Promotions ---
+function renderUsers() {
+  const editing = editingUserId ? users.find(x => x.id === editingUserId) : null;
+  document.getElementById("users").innerHTML = `
+    <div class="card"><h2>${editing ? 'แก้ไขผู้ใช้' : 'เพิ่มผู้ใช้'}</h2><form onsubmit="saveUser(event)"><div class="grid"><input type="text" id="u-user" value="${editing?.username || ''}" placeholder="User" required /><input type="password" id="u-pass" placeholder="Pass" ${editing?'':'required'} /><input type="text" id="u-name" value="${editing?.name || ''}" placeholder="ชื่อ" required /><select id="u-role"><option value="user" ${editing?.role==='user'?'selected':''}>User</option><option value="admin" ${editing?.role==='admin'?'selected':''}>Admin</option></select></div><button type="submit" class="btn-primary">บันทึก</button></form></div>
+    <div class="card"><div class="table-wrap"><table><thead><tr><th>User</th><th>ชื่อ</th><th>บทบาท</th><th>จัดการ</th></tr></thead><tbody>${users.map(u => `<tr><td>${u.username}</td><td>${u.name}</td><td>${u.role}</td><td><button onclick="editingUserId=${u.id}; renderUsers();">แก้ไข</button><button onclick="delUser(${u.id})">ลบ</button></td></tr>`).join("")}</tbody></table></div></div>
+  `;
 }
+async function saveUser(e) { e.preventDefault(); const data = { username: document.getElementById("u-user").value, password: document.getElementById("u-pass").value, name: document.getElementById("u-name").value, role: document.getElementById("u-role").value }; const method = editingUserId ? "PUT" : "POST"; await fetch(editingUserId ? `/api/users/${editingUserId}` : "/api/users", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }); editingUserId = null; await loadData(); renderUsers(); }
+async function delUser(id) { if(id===currentUser.id || !confirm("ลบ?")) return; await fetch(`/api/users/${id}`, { method: "DELETE" }); await loadData(); renderUsers(); }
 
-async function filterReports() {
-  const start = document.getElementById("rep-start").value;
-  const end = document.getElementById("rep-end").value;
-  const q = document.getElementById("rep-search").value;
-  let url = `/api/sales?`;
-  if (start) url += `start_date=${start}&`;
-  if (end) url += `end_date=${end}&`;
-  if (q) url += `search=${encodeURIComponent(q)}&`;
-  sales = await fetchJson(url); renderReports();
+function renderPromotions() {
+  const editing = editingPromotionId ? promotions.find(x => x.id === editingPromotionId) : null;
+  document.getElementById("promotions").innerHTML = `
+    <div class="card"><h2>${editing ? 'แก้ไขโปรโมชั่น' : 'เพิ่มโปรโมชั่น'}</h2><form onsubmit="savePromo(event)"><div class="grid"><input type="text" id="p-name" value="${editing?.name || ''}" placeholder="ชื่อโปร" required /><input type="number" id="p-qty" value="${editing?.min_qty || 1}" placeholder="ขั้นต่ำ" /><select id="p-type"><option value="fixed" ${editing?.discount_type==='fixed'?'selected':''}>บาท</option><option value="percent" ${editing?.discount_type==='percent'?'selected':''}>%</option></select><input type="number" id="p-val" value="${editing?.discount_value || 0}" placeholder="ส่วนลด" /><input type="text" id="p-skus" value="${editing?.applicable_skus || ''}" placeholder="SKU (ถ้ามี)" /><select id="p-status"><option value="1" ${editing?.is_active?'selected':''}>เปิด</option><option value="0" ${!editing?.is_active?'selected':''}>ปิด</option></select></div><button type="submit" class="btn-primary">บันทึก</button></form></div>
+    <div class="card"><div class="table-wrap"><table><thead><tr><th>ชื่อ</th><th>เงื่อนไข</th><th>ส่วนลด</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody>${promotions.map(p => `<tr><td>${p.name}</td><td>${p.min_qty} ชิ้น</td><td>${p.discount_value}${p.discount_type==='percent'?'%':'฿'}</td><td>${p.is_active?'เปิด':'ปิด'}</td><td><button onclick="editingPromotionId=${p.id}; renderPromotions();">แก้ไข</button><button onclick="delPromo(${p.id})">ลบ</button></td></tr>`).join("")}</tbody></table></div></div>
+  `;
 }
+async function savePromo(e) { e.preventDefault(); const data = { name: document.getElementById("p-name").value, min_qty: document.getElementById("p-qty").value, discount_type: document.getElementById("p-type").value, discount_value: document.getElementById("p-val").value, applicable_skus: document.getElementById("p-skus").value, is_active: document.getElementById("p-status").value }; const method = editingPromotionId ? "PUT" : "POST"; await fetch(editingPromotionId ? `/api/promotions/${editingPromotionId}` : "/api/promotions", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }); editingPromotionId = null; await loadData(); renderPromotions(); }
+async function delPromo(id) { if(!confirm("ลบ?")) return; await fetch(`/api/promotions/${id}`, { method: "DELETE" }); await loadData(); renderPromotions(); }
 
 // --- Customers & Prescription ---
 
 function renderCustomers() {
   document.getElementById("customers").innerHTML = `
-    <div class="card"><h2><i class="fas fa-user-plus"></i> จัดการลูกค้า</h2><form onsubmit="saveCustomer(event)"><div class="grid" style="grid-template-columns: 1fr 1fr auto; gap:15px;"><input type="text" id="c-phone" placeholder="เบอร์โทรศัพท์" required /><input type="text" id="c-name" placeholder="ชื่อ-นามสกุลลูกค้า" required /><button type="submit" class="btn-primary" style="padding:0 40px;">บันทึก</button></div></form></div>
-    <div class="card" style="margin-top:24px; padding:0; overflow:hidden; border:none; box-shadow:var(--shadow);"><div class="table-wrap"><table><thead><tr><th>เบอร์โทรศัพท์</th><th>ชื่อลูกค้า</th><th style="text-align:center;">จัดการ</th></tr></thead><tbody>${customers.map(c => `<tr><td style="font-weight:700; color:#7c3aed;">${c.phone}</td><td style="font-weight:600;">${c.name}</td><td style="text-align:center;"><button onclick="viewCustomerHistory('${c.phone}')" style="background:#eff6ff; color:#2563eb; border:none; padding:8px 16px; border-radius:10px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:6px; margin:auto;"><i class="fas fa-history"></i> ประวัติ/ค่าสายตา</button></td></tr>`).join("")}</tbody></table></div></div>
-    <div id="history-modal" class="modal" style="display: none;"><div class="modal-content" style="width: min(100%, 700px);"><div class="modal-header"><h2 id="history-title">ข้อมูลลูกค้า</h2><button onclick="document.getElementById('history-modal').style.display='none'" class="modal-close">x</button></div>
-    <div id="history-content" style="padding:24px; max-height:550px; overflow-y:auto;"></div></div></div>
+    <div class="card"><h2><i class="fas fa-user-plus"></i> จัดการลูกค้า</h2><form onsubmit="saveCustomer(event)"><div class="grid" style="grid-template-columns: 1fr 1fr auto; gap:15px;"><input type="text" id="c-phone" placeholder="เบอร์โทรศัพท์" required /><input type="text" id="c-name" placeholder="ชื่อลูกค้า" required /><button type="submit" class="btn-primary">บันทึก</button></div></form></div>
+    <div class="card" style="margin-top:24px; padding:0; overflow:hidden;"><div class="table-wrap"><table><thead><tr><th>เบอร์โทร</th><th>ชื่อ</th><th>จัดการ</th></tr></thead><tbody>${customers.map(c => `<tr><td style="font-weight:700; color:#7c3aed;">${c.phone}</td><td style="font-weight:600;">${c.name}</td><td style="text-align:center;"><button onclick="viewCustomerHistory('${c.phone}')" style="background:#eff6ff; color:#2563eb; border:none; padding:8px 15px; border-radius:10px; cursor:pointer;"><i class="fas fa-history"></i> ประวัติ/ค่าสายตา</button></td></tr>`).join("")}</tbody></table></div></div>
+    <div id="history-modal" class="modal" style="display: none;"><div class="modal-content" style="width: min(100%, 700px);"><div class="modal-header"><h2 id="history-title">ข้อมูลลูกค้า</h2><button onclick="closeHistoryModal()">x</button></div><div id="history-content" style="padding:24px; max-height:550px; overflow-y:auto;"></div></div></div>
   `;
 }
-async function saveCustomer(e) { e.preventDefault(); try { const res = await fetch("/api/customers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: document.getElementById("c-phone").value, name: document.getElementById("c-name").value }) }); if (res.ok) { showToast("สำเร็จ"); await loadData(); renderCustomers(); } } catch (err) { showToast("ล้มเหลว", "error"); } }
+async function saveCustomer(e) { e.preventDefault(); await fetch("/api/customers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: document.getElementById("c-phone").value, name: document.getElementById("c-name").value }) }); await loadData(); renderCustomers(); }
+function closeHistoryModal() { document.getElementById("history-modal").style.display = "none"; }
 
 async function viewCustomerHistory(phone) {
   const cust = customers.find(x => x.phone === phone); if (!cust) return;
   const modal = document.getElementById("history-modal"); const content = document.getElementById("history-content");
   modal.querySelector("h2").innerHTML = `<i class="fas fa-user-tag"></i> ข้อมูลลูกค้า: ${cust.name}`;
   content.innerHTML = `
-    <style>
-      .tab-btn { padding:10px 20px; border:none; background:none; cursor:pointer; font-weight:600; color:#64748b; border-bottom:2px solid transparent; transition:0.2s; }
-      .tab-btn.active { color:#7c3aed; border-bottom-color:#7c3aed; background:#f5f3ff; border-radius:8px 8px 0 0; }
-    </style>
-    <div style="display:flex; gap:10px; margin-bottom:20px; border-bottom:2px solid #f1f5f9; padding-bottom:10px;">
-      <button onclick="switchHistoryTab('sales', '${phone}')" id="tab-sales" class="tab-btn active">ประวัติการซื้อ</button>
-      <button onclick="switchHistoryTab('pres', '${phone}')" id="tab-pres" class="tab-btn">ค่าสายตา (Prescription)</button>
-    </div>
+    <style>.tab-btn { padding:10px 20px; border:none; background:none; cursor:pointer; font-weight:600; color:#64748b; border-bottom:2px solid transparent; } .tab-btn.active { color:#7c3aed; border-bottom-color:#7c3aed; background:#f5f3ff; border-radius:8px 8px 0 0; }</style>
+    <div style="display:flex; gap:10px; margin-bottom:20px; border-bottom:2px solid #f1f5f9; padding-bottom:10px;"><button onclick="switchHistoryTab('sales', '${phone}')" id="tab-sales" class="tab-btn active">ประวัติการซื้อ</button><button onclick="switchHistoryTab('pres', '${phone}')" id="tab-pres" class="tab-btn">ค่าสายตา</button></div>
     <div id="tab-content-area"></div>
   `;
   switchHistoryTab('sales', phone); modal.style.display = "flex";
@@ -494,7 +487,7 @@ async function switchHistoryTab(tab, phone) {
   document.getElementById(`tab-${tab}`).classList.add("active");
   if (tab === 'sales') {
     const custSales = sales.filter(s => s.customer_phone === phone);
-    contentArea.innerHTML = custSales.map(s => `<div style="padding:12px 15px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; background:white; border-radius:12px; margin-bottom:8px; ${s.is_voided ? 'opacity:0.5; text-decoration:line-through;' : ''}"><div><div style="font-weight:600;">${new Date(s.sold_at).toLocaleDateString("th-TH")} - ${s.sku}</div><div style="font-size:0.8rem; color:#64748b;">${s.qty} ชิ้น | ออเดอร์: ${s.order_id}</div></div><strong style="color:#7c3aed;">฿${Number(s.total).toLocaleString()}</strong></div>`).join("") || "ไม่มีประวัติการซื้อ";
+    contentArea.innerHTML = custSales.map(s => `<div style="padding:12px 15px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; background:white; border-radius:12px; margin-bottom:8px;"><div><div style="font-weight:600;">${new Date(s.sold_at).toLocaleDateString("th-TH")} - SKU: ${s.sku}</div><div style="font-size:0.8rem; color:#64748b;">${s.qty} ชิ้น | ออเดอร์: ${s.order_id}</div></div><strong style="color:#7c3aed;">฿${Number(s.total).toLocaleString()}</strong></div>`).join("") || "ไม่มีประวัติการซื้อ";
   } else {
     contentArea.innerHTML = 'กำลังโหลด...';
     try {
@@ -503,8 +496,8 @@ async function switchHistoryTab(tab, phone) {
       let html = `<button onclick="openAddPrescriptionModal(${cust.id}, '${phone}')" class="btn-primary" style="width:100%; margin-bottom:20px; background:#059669;"><i class="fas fa-plus-circle"></i> เพิ่มค่าสายตาใหม่</button>`;
       html += presList.map(p => `
         <div style="border:1px solid #e2e8f0; border-radius:16px; margin-bottom:15px; padding:15px; background:white; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
-          <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;"><strong><i class="far fa-calendar-alt"></i> ${new Date(p.created_at).toLocaleDateString("th-TH")}</strong>
-            <div style="display:flex; gap:10px;"><button onclick="generatePrescriptionPDF(${p.id}, '${phone}')" style="background:#eff6ff; color:#2563eb; border:none; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:0.8rem;"><i class="fas fa-print"></i> พิมพ์</button><button onclick="deletePrescription(${p.id}, '${phone}')" style="background:none; border:none; color:#ef4444; cursor:pointer;"><i class="fas fa-trash-alt"></i></button></div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;"><strong>${new Date(p.created_at).toLocaleDateString("th-TH")}</strong>
+            <div style="display:flex; gap:10px;"><button onclick="generatePrescriptionPDF(${p.id}, '${phone}')" style="background:#eff6ff; color:#2563eb; border:none; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:0.8rem;">พิมพ์</button><button onclick="deletePrescription(${p.id}, '${phone}')" style="background:none; border:none; color:#ef4444; cursor:pointer;"><i class="fas fa-trash-alt"></i></button></div>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
             <div style="background:#f8fafc; padding:10px; border-radius:12px;"><strong>ขวา (R)</strong><br/>Sph: ${p.sph_r}<br/>Cyl: ${p.cyl_r}<br/>Axis: ${p.axis_r}</div>
@@ -512,7 +505,7 @@ async function switchHistoryTab(tab, phone) {
           </div>
           <div style="margin-top:12px; display:flex; gap:20px; font-size:0.85rem; background:#f0fdf4; padding:8px 15px; border-radius:10px;"><span>ADD: ${p.add_val}</span><span>PD: ${p.pd}</span></div>
           ${p.note ? `<div style="margin-top:10px; font-size:0.8rem; color:#64748b;">บันทึก: ${p.note}</div>` : ''}
-        </div>`).join("") || "ยังไม่มีบันทึก";
+        </div>`).join("") || "ไม่มีประวัติ";
       contentArea.innerHTML = html;
     } catch (e) { contentArea.innerHTML = "ล้มเหลว"; }
   }
