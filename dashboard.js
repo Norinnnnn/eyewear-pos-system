@@ -256,17 +256,23 @@ function renderHome() {
         </div>
       </div>
       <div class="card" style="margin: 0;">
-        <h2><i class="fas fa-fire"></i> สินค้าขายดี</h2>
+        <h2><i class="fas fa-receipt"></i> การขายล่าสุด</h2>
         <div style="margin-top: 1rem;">
-          ${topSelling.length === 0 ? "<p style='color: #666; text-align: center; padding: 20px;'>ยังไม่มีข้อมูลการขาย</p>" : 
-            topSelling.map((p, i) => `
-              <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: ${i === topSelling.length - 1 ? 'none' : '1px solid #eee'};">
-                <div style="width: 24px; height: 24px; background: #f3f4f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">${i+1}</div>
-                <div style="flex: 1;"><div>${p.name}</div><div style="font-size: 0.75rem; color: #666;">รหัสสินค้า: ${p.sku}</div></div>
-                <div style="font-weight: bold; color: #6366f1;">${p.qty} ชิ้น</div>
+          ${sales.length === 0 ? "<p style='color: #666; text-align: center; padding: 20px;'>ยังไม่มีข้อมูลการขาย</p>" : 
+            [...new Map(sales.map(item => [item.order_id, item])).values()].slice(0, 5).map((s, i) => `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: ${i === 4 ? 'none' : '1px solid #f1f5f9'};">
+                <div>
+                  <div style="font-weight: 600; font-size: 0.9rem;">${s.order_id}</div>
+                  <div style="font-size: 0.75rem; color: #64748b;">${new Date(s.sold_at).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})} | ${s.customer_name || 'ลูกค้าทั่วไป'}</div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-weight: 700; color: #059669;">฿${Number(s.total).toLocaleString()}</div>
+                  <div style="font-size: 0.7rem; color: #94a3b8;">${s.seller_name}</div>
+                </div>
               </div>
             `).join("")}
         </div>
+        <button onclick="switchPage('reports')" style="width: 100%; margin-top: 10px; background: none; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px; color: #64748b; font-size: 0.85rem; cursor: pointer;">ดูรายงานทั้งหมด</button>
       </div>
     </div>
     
@@ -1018,9 +1024,22 @@ function renderReports() {
         <button onclick="filterReports()" class="btn-primary" style="align-self: flex-end;"><i class="fas fa-filter"></i> ค้นหา</button>
       </div>
     </div>
+    
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+      <div class="metric-card" style="padding: 15px;">
+        <div style="font-size: 0.85rem; color: #64748b;">จำนวนรายการ (ที่พบ)</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: #1e293b;">${list.length} ออเดอร์</div>
+      </div>
+      <div class="metric-card" style="padding: 15px; border-left: 5px solid #059669;">
+        <div style="font-size: 0.85rem; color: #64748b;">ยอดขายรวม (ที่พบ)</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: #059669;">฿${list.reduce((sum, o) => sum + o.total, 0).toLocaleString(undefined, {minimumFractionDigits:2})}</div>
+      </div>
+    </div>
+
     <div class="card"><div class="table-wrap"><table>
       <thead><tr><th>เลขออเดอร์</th><th>วันที่</th><th>ลูกค้า</th><th>ผู้ขาย</th><th>รวม</th><th>ใบเสร็จ</th></tr></thead>
-      <tbody>${list.map(o => `
+      <tbody>${list.length === 0 ? '<tr><td colspan="6" style="text-align: center; padding: 30px; color: #94a3b8;">ไม่พบข้อมูลออเดอร์</td></tr>' : 
+        list.map(o => `
         <tr><td>${o.id}</td><td>${new Date(o.date).toLocaleString("th-TH")}</td><td>${o.cust}</td><td>${o.seller}</td><td>฿${o.total.toFixed(2)}</td>
         <td><button onclick="generateReceiptPDF('${o.id}')" style="background: #10b981; color: white;"><i class="fas fa-file-pdf"></i> ดู</button></td></tr>`).join("")}</tbody>
     </table></div></div>
