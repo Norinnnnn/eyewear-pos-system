@@ -321,18 +321,40 @@ app.post("/api/products", authenticateToken, upload.single("image"), async (req,
 });
 
 app.put("/api/products/:sku", authenticateToken, upload.single("image"), async (req, res) => {
-  const { name, category, price, stock, cost, color, prescription } = req.body;
+  const { sku: newSku, name, category, price, stock, cost, color, prescription } = req.body;
+  const oldSku = req.params.sku;
   const image = req.file ? req.file.path : null;
+  
+  const connection = await pool.getConnection();
   try {
-    let sql = "UPDATE products SET name=?, category=?, price=?, stock=?, cost=?, color=?, prescription=? WHERE sku=?";
-    let params = [name, category, price, stock, cost || 0, color || "", prescription || "", req.params.sku];
+    await connection.beginTransaction();
+
+    // 1. Update Product details
+    let sql = "UPDATE products SET sku=?, name=?, category=?, price=?, stock=?, cost=?, color=?, prescription=? WHERE sku=?";
+    let params = [newSku || oldSku, name, category, price, stock, cost || 0, color || "", prescription || "", oldSku];
     if (image) {
-      sql = "UPDATE products SET name=?, category=?, price=?, stock=?, cost=?, color=?, prescription=?, image=? WHERE sku=?";
-      params = [name, category, price, stock, cost || 0, color || "", prescription || "", image, req.params.sku];
+      sql = "UPDATE products SET sku=?, name=?, category=?, price=?, stock=?, cost=?, color=?, prescription=?, image=? WHERE sku=?";
+      params = [newSku || oldSku, name, category, price, stock, cost || 0, color || "", prescription || "", image, oldSku];
     }
-    await pool.query(sql, params);
+    await connection.query(sql, params);
+
+    // 2. Cascade SKU change if it changed
+    if (newSku && newSku !== oldSku) {
+      await connection.query("UPDATE sales SET sku = ? WHERE sku = ?", [newSku, oldSku]);
+      await connection.query("UPDATE stock_logs SET sku = ? WHERE sku = ?", [newSku, oldSku]);
+    }
+
+    await connection.commit();
     res.json({ message: "สำเร็จ" });
-  } catch (error) { handleError(res, error); }
+  } catch (error) {
+    await connection.rollback();
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ error: "รหัสสินค้าใหม่นี้มีอยู่ในระบบแล้ว" });
+    }
+    handleError(res, error);
+  } finally {
+    connection.release();
+  }
 });
 
 app.post("/api/products/:sku/add-stock", authenticateToken, async (req, res) => {
