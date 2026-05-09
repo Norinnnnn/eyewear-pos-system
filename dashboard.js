@@ -482,6 +482,10 @@ function renderPOSProductList(items) {
     <div onclick="addToCart('${p.sku}')" style="background: white; border: 1px solid #f0f0f0; padding: 12px; border-radius: 16px; cursor: pointer; position: relative; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);" onmouseover="this.style.transform='translateY(-3px)'; this.style.borderColor='#7c3aed';" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='#f0f0f0';">
       <img src="${p.image || 'https://via.placeholder.com/150?text=No+Image'}" style="width: 100%; height: 110px; object-fit: cover; border-radius: 12px;" />
       <div style="font-weight: 600; margin-top: 10px; font-size: 0.9rem; height: 2.4rem; overflow: hidden; line-height: 1.2;">${p.name}</div>
+      <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px; min-height: 1rem;">
+        ${p.color ? `<i class="fas fa-palette" style="font-size: 0.7rem;"></i> ${p.color}` : ''}
+        ${p.prescription ? `${p.color ? ' | ' : ''}<i class="fas fa-eye" style="font-size: 0.7rem;"></i> ${p.prescription}` : ''}
+      </div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
         <div style="color: #7c3aed; font-weight: 700; font-size: 1.1rem;">฿${Number(p.price).toLocaleString()}</div>
         <div style="font-size: 0.75rem; color: ${p.stock <= settings.low_stock_threshold ? '#ef4444' : '#6b7280'}; font-weight: 500;">คลัง: ${p.stock}</div>
