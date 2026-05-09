@@ -349,7 +349,7 @@ app.put("/api/products/:sku", authenticateToken, upload.single("image"), async (
   } catch (error) {
     await connection.rollback();
     if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({ error: "รหัสสินค้าใหม่นี้มีอยู่ในระบบแล้ว" });
+      return res.status(400).json({ error: "รหัสสินค้านี้มีอยู่ในระบบแล้ว" });
     }
     handleError(res, error);
   } finally {

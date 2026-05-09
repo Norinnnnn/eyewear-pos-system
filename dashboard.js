@@ -1,4 +1,4 @@
-// Eyewear POS Dashboard - Version 1.1.0 (Restored Peak UI + SKU/Cart Polish)
+// Eyewear POS Dashboard - Version 1.1.2 (Final Perfection Restoration)
 let currentUser = null;
 let products = [];
 let users = [];
@@ -110,8 +110,8 @@ function renderHome() {
 
   const lowStockItems = products.filter(p => Number(p.stock) <= Number(settings.low_stock_threshold));
   const totalRevenue = sales.reduce((sum, s) => sum + Number(s.total || 0), 0);
-  const todayStr = new Date().toLocaleDateString();
-  const todaySales = sales.filter(s => new Date(s.sold_at).toLocaleDateString() === todayStr);
+  const today = new Date().toLocaleDateString();
+  const todaySales = sales.filter(s => new Date(s.sold_at).toLocaleDateString() === today);
   const todayRevenue = todaySales.reduce((sum, s) => sum + Number(s.total || 0), 0);
 
   const productSalesMap = {};
@@ -259,7 +259,7 @@ function renderPOSProductList(items) {
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
         <div style="color: #7c3aed; font-weight: 700; font-size: 1.1rem;">฿${Number(p.price).toLocaleString()}</div>
-        <div style="font-size: 0.75rem; color: #6b7280;">คลัง: ${p.stock}</div>
+        <div style="font-size: 0.75rem; color: ${p.stock <= settings.low_stock_threshold ? '#ef4444' : '#6b7280'}; font-weight: 800;">คลัง: ${p.stock}</div>
       </div>
       ${p.stock <= settings.low_stock_threshold ? `<div style="position: absolute; top: 8px; right: 8px; background: #ef4444; color: white; font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: bold; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);">สต็อกต่ำ</div>` : ""}
     </div>`).join("");
@@ -378,7 +378,7 @@ async function finalizeCheckout(totalAmount) {
 
 function renderInventory() {
   document.getElementById("inventory").innerHTML = `
-    <div style="display: flex; justify-content: space-between; margin-bottom: 24px; align-items: center; gap:15px; flex-wrap:wrap;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap:15px; flex-wrap:wrap;">
       <div style="display: flex; gap: 10px;">
         <button onclick="openAddProductModal()" class="btn-primary" style="display:flex; align-items:center; gap:8px;"><i class="fas fa-plus-circle"></i> เพิ่มสินค้า</button>
       </div>
@@ -425,15 +425,12 @@ function renderInventory() {
         <label>รูปภาพ<input type="file" id="m-img" accept="image/*" /></label>
       </div><div class="modal-footer" style="padding:15px 32px; background:#f9fafb;"><button type="button" onclick="closeModal()" style="background: #e2e8f0; color: #475569;">ยกเลิก</button><button type="submit" class="btn-primary">บันทึกข้อมูลสินค้า</button></div></form>
     </div></div>
-    <div id="stock-modal" class="modal" style="display: none;"><div class="modal-content" style="width: min(100%, 400px);"><div class="modal-header" style="background:#ecfdf5; border-bottom: 1px solid #d1fae5;">
+    <div id="stock-modal" class="modal" style="display: none;"><div class="modal-content" style="width: min(100%, 450px);"><div class="modal-header" style="background:#ecfdf5; border-bottom: 1px solid #d1fae5;">
           <h2 style="color: #065f46;"><i class="fas fa-plus-circle"></i> เพิ่มสต็อกสินค้า</h2>
           <button onclick="closeStockModal()" class="modal-close"><i class="fas fa-times"></i></button>
         </div>
       <form onsubmit="addStock(event)"><div id="stock-product-info" style="padding: 20px; background:#f8fafc; border-bottom:1px solid #eee;"></div><div style="padding: 24px;"><input type="number" id="stock-qty" required placeholder="จำนวนที่เพิ่ม" style="width: 100%; text-align: center; font-size: 2.2rem; border: 2px solid #7c3aed; border-radius: 16px; color:#7c3aed; font-weight:800;" /></div>
       <div class="modal-footer" style="padding: 20px 24px; background: #f9fafb;"><button type="submit" class="btn-primary" style="width: 100%; padding: 15px; background:#059669; border-radius:12px;">ยืนยันการเพิ่ม</button></div></form>
-    </div></div>
-    <div id="stock-log-modal" class="modal" style="display: none;"><div class="modal-content" style="width: min(100%, 650px);"><div class="modal-header"><h2>ประวัติการนำเข้าสินค้า</h2><button onclick="document.getElementById('stock-log-modal').style.display='none'">x</button></div>
-      <div id="stock-log-content" style="padding: 20px; max-height: 500px; overflow-y: auto;"></div>
     </div></div>
   `;
   renderInventoryRows();
@@ -464,7 +461,6 @@ function closeStockModal() { document.getElementById("stock-modal").style.displa
 async function addStock(e) { e.preventDefault(); const qty = document.getElementById("stock-qty").value; try { const res = await fetch(`/api/products/${encodeURIComponent(editProductSku)}/add-stock`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quantity: qty }) }); if (res.ok) { showToast(`เพิ่มสำเร็จ (+${qty})`, "success"); closeStockModal(); await loadData(); renderInventory(); } } catch (e) { showToast("ล้มเหลว", "error"); } }
 async function saveProduct(e) { e.preventDefault(); const newSku = document.getElementById("m-sku").value; const fd = new FormData(); fd.append("sku", newSku); fd.append("name", document.getElementById("m-name").value); fd.append("category", document.getElementById("m-cat").value); fd.append("price", document.getElementById("m-price").value); fd.append("stock", document.getElementById("m-stock").value); fd.append("cost", document.getElementById("m-cost").value); fd.append("color", document.getElementById("m-color").value); fd.append("prescription", document.getElementById("m-prescription").value); const imgFile = document.getElementById("m-img").files[0]; if (imgFile) fd.append("image", imgFile); const url = editProductSku ? `/api/products/${editProductSku}` : "/api/products"; try { const res = await fetch(url, { method: editProductSku ? "PUT" : "POST", body: fd }); if (res.ok) { showToast("สำเร็จ"); closeModal(); await loadData(); renderInventory(); } else { const err = await res.json(); showToast(err.error || "ล้มเหลว", "error"); } } catch (error) { showToast("ล้มเหลว", "error"); } }
 async function delProduct(sku) { if (!confirm(`ยืนยันการลบ [${sku}]?`)) return; try { const res = await fetch(`/api/products/${sku}`, { method: "DELETE" }); if (res.ok) { showToast("ลบสำเร็จ"); await loadData(); renderInventory(); } } catch (error) { showToast("ล้มเหลว", "error"); } }
-async function openStockLogModal() { const content = document.getElementById("stock-log-content"); content.innerHTML = '<div style="text-align:center;"><i class="fas fa-circle-notch fa-spin"></i></div>'; document.getElementById("stock-log-modal").style.display = "flex"; try { const logs = await fetchJson("/api/stock-logs"); content.innerHTML = `<table style="width:100%; border-collapse:collapse; font-size:0.9rem;"><thead style="background:#f8fafc;"><tr><th style="padding:12px; text-align:left;">วันที่/เวลา</th><th style="padding:12px; text-align:left;">สินค้า</th><th style="padding:12px; text-align:center;">จำนวน</th><th style="padding:12px; text-align:right;">โดย</th></tr></thead><tbody>${logs.map(l => `<tr style="border-bottom:1px solid #f8fafc;"><td style="padding:12px; color:#64748b;">${new Date(l.created_at).toLocaleString("th-TH")}</td><td style="padding:12px; font-weight:600;">${l.product_name || l.sku}</td><td style="padding:12px; text-align:center; font-weight:800; color:#059669;">+${l.quantity}</td><td style="padding:12px; text-align: right; color:#64748b;">${l.user_name}</td></tr>`).join("")}</tbody></table>` || "ไม่มีประวัติ"; } catch (err) { content.innerHTML = "ล้มเหลว"; } }
 
 // --- Reports Page ---
 
@@ -606,7 +602,7 @@ async function generateReceiptPDF(orderId) {
   try {
     const order = await fetchJson(`/api/orders/${orderId}`);
     const element = document.createElement("div"); element.style.padding = "40px";
-    element.innerHTML = `<h1>ใบเสร็จ</h1><p>ออเดอร์: ${order.order_id}</p><p>ลูกค้า: ${order.customer_name}</p><hr/>` + order.items.map(i => `<div>${i.product_name} x ${i.qty} = ฿${Number(i.total).toLocaleString()}</div>`).join("") + `<hr/><h3>ยอดสุทธิ: ฿${order.items.reduce((s,i)=>s+Number(i.total), 0).toLocaleString()}</h3>`;
+    element.innerHTML = `<h1>ใบเสร็จ</h1><p>ออเดอร์: ${order.order_id}</p><p>ลูกค้า: ${order.customer_name}</p><hr/>` + order.items.map(i => `<div>${i.product_name} x ${i.qty} = ฿${Number(i.total).toLocaleString()}</div>`).join("") + `<hr/><h3>ยอดรวมสุทธิ: ฿${order.items.reduce((s,i)=>s+Number(i.total), 0).toLocaleString()}</h3>`;
     html2pdf().from(element).save(`Receipt-${orderId}.pdf`);
   } catch (e) { showToast("พิมพ์ไม่สำเร็จ", "error"); }
 }
