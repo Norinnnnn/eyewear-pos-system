@@ -591,20 +591,180 @@ async function deletePrescription(id, phone) { if (confirm("ลบ?")) { await f
 async function generatePrescriptionPDF(id, phone) {
   try {
     const presList = await fetchJson(`/api/customers/${phone}/prescriptions`);
-    const p = presList.find(x => x.id === id); const cust = customers.find(x => x.phone === phone);
-    const element = document.createElement("div"); element.style.padding = "40px";
-    element.innerHTML = `<h1>ใบค่าสายตา</h1><p>ลูกค้า: ${cust.name}</p><hr/>` + `<p>ตาขวา: Sph ${p.sph_r} Cyl ${p.cyl_r} Axis ${p.axis_r}</p><p>ตาซ้าย: Sph ${p.sph_l} Cyl ${p.cyl_l} Axis ${p.axis_l}</p>` + `<p>ADD: ${p.add_val} PD: ${p.pd}</p>`;
-    html2pdf().from(element).save(`Prescription-${cust.name}.pdf`);
-  } catch (e) { showToast("พิมพ์ไม่สำเร็จ", "error"); }
+    const p = presList.find(x => x.id === id); 
+    const cust = customers.find(x => x.phone === phone);
+    
+    const element = document.createElement("div");
+    element.innerHTML = `
+      <div style="font-family: 'Prompt', sans-serif; padding: 40px; color: #1f2937; background: white;">
+        <div style="text-align: center; margin-bottom: 40px;">
+          <h1 style="margin: 0; color: #2563eb; font-size: 32px; font-weight: 700;">ใบค่าสายตา</h1>
+          <p style="margin: 8px 0; color: #6b7280; font-size: 16px; text-transform: uppercase; letter-spacing: 2px;">Prescription Record</p>
+          <div style="width: 60px; height: 3px; background: #2563eb; margin: 20px auto;"></div>
+        </div>
+
+        <div style="margin-bottom: 40px; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; background: #f8fafc;">
+          <p style="margin: 0 0 10px 0; color: #64748b; font-size: 12px; text-transform: uppercase;">ข้อมูลลูกค้า</p>
+          <div style="display: flex; justify-content: space-between;">
+            <p style="margin: 0; font-size: 18px;"><strong>คุณ:</strong> ${cust.name}</p>
+            <p style="margin: 0; font-size: 18px;"><strong>เบอร์โทร:</strong> ${cust.phone}</p>
+          </div>
+          <p style="margin: 10px 0 0 0; color: #64748b; font-size: 14px;">วันที่บันทึก: ${new Date(p.created_at).toLocaleDateString("th-TH", { dateStyle: 'long' })}</p>
+        </div>
+
+        <div style="display: flex; gap: 20px; margin-bottom: 30px;">
+          <div style="flex: 1; padding: 20px; border: 2px solid #e2e8f0; border-radius: 15px;">
+            <h3 style="margin: 0 0 15px 0; color: #2563eb; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">ตาขวา (Right Eye)</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                <p style="width: 45%;"><strong>SPH:</strong> ${p.sph_r}</p>
+                <p style="width: 45%;"><strong>CYL:</strong> ${p.cyl_r}</p>
+                <p style="width: 45%;"><strong>AXIS:</strong> ${p.axis_r}</p>
+            </div>
+          </div>
+          <div style="flex: 1; padding: 20px; border: 2px solid #e2e8f0; border-radius: 15px;">
+            <h3 style="margin: 0 0 15px 0; color: #2563eb; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">ตาซ้าย (Left Eye)</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                <p style="width: 45%;"><strong>SPH:</strong> ${p.sph_l}</p>
+                <p style="width: 45%;"><strong>CYL:</strong> ${p.cyl_l}</p>
+                <p style="width: 45%;"><strong>AXIS:</strong> ${p.axis_l}</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding: 20px; border: 2px solid #e2e8f0; border-radius: 15px; margin-bottom: 40px; background: #f1f5f9;">
+            <div style="display: flex; gap: 40px; justify-content: center;">
+                <p style="font-size: 18px;"><strong>ADD:</strong> ${p.add_val || '-'}</p>
+                <p style="font-size: 18px;"><strong>PD:</strong> ${p.pd || '-'}</p>
+            </div>
+        </div>
+
+        <div style="margin-top: 100px; display: flex; justify-content: space-around;">
+            <div style="text-align: center;">
+                <div style="width: 200px; border-bottom: 1px solid #000; margin-bottom: 10px;"></div>
+                <p>ผู้ตรวจสายตา</p>
+            </div>
+            <div style="text-align: center;">
+                <div style="width: 200px; border-bottom: 1px solid #000; margin-bottom: 10px;"></div>
+                <p>วันที่ตรวจ</p>
+            </div>
+        </div>
+
+        <div style="margin-top: 60px; text-align: center; color: #94a3b8; font-size: 12px;">
+          <p>*** ขอบคุณที่ไว้วางใจร้านแว่นตาอานนท์ ***</p>
+        </div>
+      </div>
+    `;
+
+    const opt = {
+      margin: 10,
+      filename: `Prescription-${cust.name}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 3, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().from(element).set(opt).save();
+  } catch (e) { 
+    console.error(e);
+    showToast("พิมพ์ไม่สำเร็จ", "error"); 
+  }
 }
 
 async function generateReceiptPDF(orderId) { 
   try {
     const order = await fetchJson(`/api/orders/${orderId}`);
-    const element = document.createElement("div"); element.style.padding = "40px";
-    element.innerHTML = `<h1>ใบเสร็จ</h1><p>ออเดอร์: ${order.order_id}</p><p>ลูกค้า: ${order.customer_name}</p><hr/>` + order.items.map(i => `<div>${i.product_name} x ${i.qty} = ฿${Number(i.total).toLocaleString()}</div>`).join("") + `<hr/><h3>ยอดรวมสุทธิ: ฿${order.items.reduce((s,i)=>s+Number(i.total), 0).toLocaleString()}</h3>`;
-    html2pdf().from(element).save(`Receipt-${orderId}.pdf`);
-  } catch (e) { showToast("พิมพ์ไม่สำเร็จ", "error"); }
+    const saleEntry = sales.find(s => s.order_id === orderId);
+    const methodLabel = saleEntry?.payment_method === 'cash' ? 'เงินสด' : (saleEntry?.payment_method === 'qr' ? 'QR Code' : (saleEntry?.payment_method === 'transfer' ? 'โอนเงิน' : '-'));
+
+    const subtotal = order.items.reduce((s, i) => s + (Number(i.unit_price) * i.qty), 0);
+    const totalDiscount = order.items.reduce((s, i) => s + Number(i.discount), 0);
+    const total = subtotal - totalDiscount;
+
+    const element = document.createElement("div");
+    element.innerHTML = `
+      <div style="font-family: 'Prompt', sans-serif; padding: 40px; color: #1f2937; background: white; min-height: 800px;">
+        <div style="text-align: center; margin-bottom: 40px;">
+          <h1 style="margin: 0; color: #7c3aed; font-size: 32px; font-weight: 700;">ร้านแว่นตาอานนท์</h1>
+          <p style="margin: 8px 0; color: #6b7280; font-size: 16px; text-transform: uppercase; letter-spacing: 2px;">ใบเสร็จรับเงิน / Receipt</p>
+          <div style="width: 60px; height: 3px; background: #7c3aed; margin: 20px auto;"></div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 40px; padding: 25px; border: 1px solid #f3f4f6; border-radius: 16px; background: #fafafa;">
+          <div style="font-size: 14px; line-height: 1.6;">
+            <p style="margin: 0; color: #9ca3af; font-size: 12px; text-transform: uppercase;">ข้อมูลการสั่งซื้อ</p>
+            <p style="margin: 4px 0;"><strong>เลขที่ออเดอร์:</strong> ${order.order_id}</p>
+            <p style="margin: 4px 0;"><strong>วันที่:</strong> ${new Date(order.sold_at).toLocaleString("th-TH")}</p>
+            <p style="margin: 4px 0;"><strong>ช่องทางชำระ:</strong> ${methodLabel}</p>
+          </div>
+          <div style="font-size: 14px; line-height: 1.6; text-align: right;">
+            <p style="margin: 0; color: #9ca3af; font-size: 12px; text-transform: uppercase;">ข้อมูลลูกค้า</p>
+            <p style="margin: 4px 0;"><strong>ชื่อลูกค้า:</strong> ${order.customer_name || 'ลูกค้าทั่วไป'}</p>
+            <p style="margin: 4px 0;"><strong>เบอร์โทรศัพท์:</strong> ${order.customer_phone || '-'}</p>
+          </div>
+        </div>
+
+        <table style="width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 40px;">
+          <thead>
+            <tr>
+              <th style="padding: 15px; text-align: left; background: #7c3aed; color: white; border-radius: 12px 0 0 12px; font-weight: 500;">รายการสินค้า</th>
+              <th style="padding: 15px; text-align: center; background: #7c3aed; color: white; font-weight: 500;">จำนวน</th>
+              <th style="padding: 15px; text-align: right; background: #7c3aed; color: white; font-weight: 500;">ราคา/ชิ้น</th>
+              <th style="padding: 15px; text-align: right; background: #7c3aed; color: white; border-radius: 0 12px 12px 0; font-weight: 500;">รวม (฿)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${order.items.map(i => `
+              <tr>
+                <td style="padding: 20px 15px; border-bottom: 1px solid #f3f4f6; font-weight: 500; color: #111827;">${i.product_name}</td>
+                <td style="padding: 20px 15px; border-bottom: 1px solid #f3f4f6; text-align: center; color: #4b5563;">${i.qty}</td>
+                <td style="padding: 20px 15px; border-bottom: 1px solid #f3f4f6; text-align: right; color: #4b5563;">${Number(i.unit_price).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td style="padding: 20px 15px; border-bottom: 1px solid #f3f4f6; text-align: right; font-weight: 600; color: #111827;">${Number(i.total).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+
+        <div style="display: flex; justify-content: flex-end;">
+          <div style="width: 300px; background: #f9fafb; padding: 25px; border-radius: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px;">
+              <span style="color: #6b7280;">รวมเป็นเงิน</span>
+              <span style="font-weight: 500;">฿${subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 14px;">
+              <span style="color: #ef4444;">ส่วนลดทั้งหมด</span>
+              <span style="color: #ef4444; font-weight: 500;">- ฿${totalDiscount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #e5e7eb; padding-top: 15px; margin-top: 10px;">
+              <span style="font-size: 16px; font-weight: 700; color: #111827;">ยอดชำระสุทธิ</span>
+              <span style="font-size: 24px; font-weight: 800; color: #7c3aed;">฿${total.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 80px; text-align: center; color: #9ca3af;">
+          <p style="margin: 5px 0; font-size: 14px; font-weight: 500; color: #4b5563;">ขอขอบคุณที่ใช้บริการ</p>
+          <p style="margin: 5px 0; font-size: 12px;">สินค้าซื้อแล้วไม่รับเปลี่ยนหรือคืน</p>
+          <div style="margin-top: 20px; font-size: 11px; color: #d1d5db;">
+            <p>ร้านแว่นตาอานนท์ - ผู้เชี่ยวชาญด้านสายตา</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const opt = {
+      margin: 0,
+      filename: `Receipt-${orderId}.pdf`,
+      image: { type: 'jpeg', quality: 1 },
+      html2canvas: { scale: 3, useCORS: true, letterRendering: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    await html2pdf().from(element).set(opt).save();
+    showToast("ส่งออกใบเสร็จ PDF เรียบร้อย", "success");
+  } catch (e) { 
+    console.error(e);
+    showToast("พิมพ์ไม่สำเร็จ", "error"); 
+  }
 }
 
 async function generateSalesReportPDF(period) { showToast("กำลังสร้างรายงาน...", "info"); }
