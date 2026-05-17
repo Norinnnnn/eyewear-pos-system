@@ -493,9 +493,11 @@ function renderInventoryRows() {
     <td style="font-family: monospace; font-weight: 700;">${p.sku}</td><td>${p.name}</td><td><span class="badge" style="background: #eff6ff; color: #2563eb;">${p.category || 'ทั่วไป'}</span></td><td style="text-align: right; font-weight: 700; color: #7c3aed;">฿${Number(p.price).toLocaleString()}</td>
     <td style="text-align: center;"><div style="display:flex; flex-direction:column; gap:4px; align-items:center;"><span class="status-badge ${p.stock <= settings.low_stock_threshold ? 'status-low-stock' : 'status-in-stock'}" style="font-weight:800;">${p.stock}</span><div style="width:60px; height:4px; background:#e2e8f0; border-radius:2px; overflow:hidden;"><div style="width:${Math.min(100, (p.stock/50)*100)}%; height:100%; background:${p.stock <= settings.low_stock_threshold ? '#ef4444' : '#059669'}; transition:width 0.5s ease;"></div></div></div></td>
     <td style="text-align: center;"><div style="display: flex; gap: 8px; justify-content: center;">
-      <button onclick="openAddStockModal('${p.sku}')" style="background: #ecfdf5; color: #059669; padding: 8px; border-radius: 10px; border: none; cursor: pointer;"><i class="fas fa-plus"></i></button>
-      <button onclick="editProduct('${p.sku}')" style="background: #eff6ff; color: #2563eb; padding: 8px; border-radius: 10px; border: none; cursor: pointer;"><i class="fas fa-edit"></i></button>
-      <button onclick="delProduct('${p.sku}')" style="background: #fef2f2; color: #ef4444; padding: 8px; border-radius: 10px; border: none; cursor: pointer;"><i class="fas fa-trash-alt"></i></button>
+      <button onclick="openAddStockModal('${p.sku}')" style="background: #ecfdf5; color: #059669; padding: 8px; border-radius: 10px; border: none; cursor: pointer;" title="เพิ่มสต็อก"><i class="fas fa-plus"></i></button>
+      ${currentUser.role === 'admin' ? `
+        <button onclick="editProduct('${p.sku}')" style="background: #eff6ff; color: #2563eb; padding: 8px; border-radius: 10px; border: none; cursor: pointer;" title="แก้ไข"><i class="fas fa-edit"></i></button>
+        <button onclick="delProduct('${p.sku}')" style="background: #fef2f2; color: #ef4444; padding: 8px; border-radius: 10px; border: none; cursor: pointer;" title="ลบ"><i class="fas fa-trash-alt"></i></button>
+      ` : ''}
     </div></td></tr>`).join("");
 }
 
