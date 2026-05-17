@@ -157,6 +157,7 @@ function renderHome() {
           <button onclick="switchPage('inventory')" class="btn-primary" style="padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: #8b5cf6;"><i class="fas fa-plus-circle"></i><span>เพิ่มสินค้าใหม่</span></button>
           <button onclick="switchPage('reports')" class="btn-secondary" style="padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px;"><i class="fas fa-file-invoice-dollar"></i><span>ดูรายงาน</span></button>
           <button onclick="generateSalesReportPDF('today')" class="btn-secondary" style="padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: #0ea5e9; color: white; border: none;"><i class="fas fa-calendar-day"></i><span>รายงานวันนี้ (PDF)</span></button>
+          <button onclick="generateSalesReportPDF('monthly')" class="btn-secondary" style="padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: #7c3aed; color: white; border: none;"><i class="fas fa-calendar-alt"></i><span>รายงานเดือนนี้ (PDF)</span></button>
         </div>
       </div>
       <div class="card" style="margin: 0;">
@@ -818,7 +819,108 @@ async function generateReceiptPDF(orderId) {
   }
 }
 
-async function generateSalesReportPDF(period) { showToast("กำลังสร้างรายงาน...", "info"); }
+async function generateSalesReportPDF(period) { 
+  try {
+    showToast("กำลังสร้างรายงาน...", "info");
+    const now = new Date();
+    let startDate, endDate, title, filename;
+
+    if (period === 'today') {
+      startDate = new Date(now.setHours(0, 0, 0, 0)).toISOString();
+      endDate = new Date(now.setHours(23, 59, 59, 999)).toISOString();
+      title = `รายงานยอดขายรายวัน (${new Date().toLocaleDateString("th-TH")})`;
+      filename = `Daily-Report-${new Date().toLocaleDateString()}.pdf`;
+    } else {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
+      title = `รายงานยอดขายรายเดือน (${now.toLocaleDateString("th-TH", { month: 'long', year: 'numeric' })})`;
+      filename = `Monthly-Report-${now.getMonth() + 1}-${now.getFullYear()}.pdf`;
+    }
+
+    const reportSales = await fetchJson(`/api/sales?start_date=${startDate.split('T')[0]}&end_date=${endDate.split('T')[0]}`);
+    
+    // Group by Order ID to get total revenue and order count
+    const ordersMap = {};
+    reportSales.forEach(s => {
+      if (!ordersMap[s.order_id]) {
+        ordersMap[s.order_id] = { id: s.order_id, total: 0, date: s.sold_at, customer: s.customer_name || 'ลูกค้าทั่วไป' };
+      }
+      ordersMap[s.order_id].total += Number(s.total);
+    });
+
+    const ordersList = Object.values(ordersMap);
+    const totalRevenue = ordersList.reduce((sum, o) => sum + o.total, 0);
+    const totalOrders = ordersList.length;
+    const avgTicket = totalOrders > 0 ? (totalRevenue / totalOrders) : 0;
+
+    const element = document.createElement("div");
+    element.innerHTML = `
+      <div style="font-family: 'Prompt', sans-serif; padding: 40px; color: #1f2937; background: white; min-height: 800px;">
+        <div style="text-align: center; margin-bottom: 40px;">
+          <h1 style="margin: 0; color: #0ea5e9; font-size: 28px; font-weight: 700;">ร้านแว่นตาอานนท์</h1>
+          <h2 style="margin: 10px 0; color: #1e293b; font-size: 20px;">${title}</h2>
+          <div style="width: 80px; height: 4px; background: #0ea5e9; margin: 15px auto; border-radius: 2px;"></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 40px;">
+          <div style="background: #f0f9ff; padding: 20px; border-radius: 16px; border: 1px solid #e0f2fe; text-align: center;">
+            <div style="font-size: 14px; color: #0369a1; margin-bottom: 5px;">ยอดขายรวม</div>
+            <div style="font-size: 24px; font-weight: 800; color: #0ea5e9;">฿${totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+          </div>
+          <div style="background: #f0fdf4; padding: 20px; border-radius: 16px; border: 1px solid #dcfce7; text-align: center;">
+            <div style="font-size: 14px; color: #15803d; margin-bottom: 5px;">จำนวนออเดอร์</div>
+            <div style="font-size: 24px; font-weight: 800; color: #22c55e;">${totalOrders}</div>
+          </div>
+          <div style="background: #fef2f2; padding: 20px; border-radius: 16px; border: 1px solid #fee2e2; text-align: center;">
+            <div style="font-size: 14px; color: #b91c1c; margin-bottom: 5px;">เฉลี่ยต่อบิล</div>
+            <div style="font-size: 24px; font-weight: 800; color: #ef4444;">฿${avgTicket.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+          </div>
+        </div>
+
+        <h3 style="color: #475569; margin-bottom: 15px; font-size: 16px; border-left: 4px solid #0ea5e9; padding-left: 10px;">รายการขายทั้งหมด</h3>
+        <table style="width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 40px;">
+          <thead>
+            <tr>
+              <th style="padding: 12px; text-align: left; background: #f8fafc; color: #64748b; border-bottom: 2px solid #e2e8f0; font-size: 13px;">เลขออเดอร์</th>
+              <th style="padding: 12px; text-align: left; background: #f8fafc; color: #64748b; border-bottom: 2px solid #e2e8f0; font-size: 13px;">วันที่/เวลา</th>
+              <th style="padding: 12px; text-align: left; background: #f8fafc; color: #64748b; border-bottom: 2px solid #e2e8f0; font-size: 13px;">ลูกค้า</th>
+              <th style="padding: 12px; text-align: right; background: #f8fafc; color: #64748b; border-bottom: 2px solid #e2e8f0; font-size: 13px;">ยอดรวม</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ordersList.map(o => `
+              <tr>
+                <td style="padding: 12px; border-bottom: 1px solid #f1f5f9; font-family: monospace; font-weight: 600; color: #334155;">${o.id}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #f1f5f9; color: #64748b; font-size: 13px;">${new Date(o.date).toLocaleString("th-TH")}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 13px;">${o.customer}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 700; color: #0ea5e9;">฿${o.total.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+              </tr>
+            `).join("") || '<tr><td colspan="4" style="text-align:center; padding:40px; color:#94a3b8;">ไม่มีรายการขายในช่วงเวลาที่กำหนด</td></tr>'}
+          </tbody>
+        </table>
+
+        <div style="margin-top: 60px; padding-top: 20px; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; font-size: 12px; color: #94a3b8;">
+          <p>ออกโดย: ${currentUser.name} (${currentUser.role})</p>
+          <p>วันที่พิมพ์: ${new Date().toLocaleString("th-TH")}</p>
+        </div>
+      </div>
+    `;
+
+    const opt = {
+      margin: 10,
+      filename: filename,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    await html2pdf().from(element).set(opt).save();
+    showToast("ส่งออกรายงาน PDF เรียบร้อย", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("ไม่สามารถสร้างรายงานได้", "error");
+  }
+}
 
 // --- Initialization ---
 
