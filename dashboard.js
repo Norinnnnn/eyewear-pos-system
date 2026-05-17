@@ -761,7 +761,7 @@ async function generateReceiptPDF(orderId) {
               <th style="padding: 15px; text-align: left; background: #7c3aed; color: white; border-radius: 12px 0 0 12px; font-weight: 500;">รายการสินค้า</th>
               <th style="padding: 15px; text-align: center; background: #7c3aed; color: white; font-weight: 500;">จำนวน</th>
               <th style="padding: 15px; text-align: right; background: #7c3aed; color: white; font-weight: 500;">ราคา/ชิ้น</th>
-              <th style="padding: 15px 25px 15px 15px; text-align: right; background: #7c3aed; color: white; border-radius: 0 12px 12px 0; font-weight: 500;">รวม (฿)</th>
+              <th style="padding: 15px 40px 15px 15px; text-align: right; background: #7c3aed; color: white; border-radius: 0 12px 12px 0; font-weight: 500;">รวม (฿)</th>
             </tr>
           </thead>
           <tbody>
@@ -770,14 +770,14 @@ async function generateReceiptPDF(orderId) {
                 <td style="padding: 20px 15px; border-bottom: 1px solid #f3f4f6; font-weight: 500; color: #111827;">${i.product_name}</td>
                 <td style="padding: 20px 15px; border-bottom: 1px solid #f3f4f6; text-align: center; color: #4b5563;">${i.qty}</td>
                 <td style="padding: 20px 15px; border-bottom: 1px solid #f3f4f6; text-align: right; color: #4b5563;">${Number(i.unit_price).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                <td style="padding: 20px 25px 20px 15px; border-bottom: 1px solid #f3f4f6; text-align: right; font-weight: 600; color: #111827;">${Number(i.total).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td style="padding: 20px 40px 20px 15px; border-bottom: 1px solid #f3f4f6; text-align: right; font-weight: 600; color: #111827;">${Number(i.total).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
               </tr>
             `).join("")}
           </tbody>
         </table>
 
         <div style="display: flex; justify-content: flex-end;">
-          <div style="width: 300px; background: #f9fafb; padding: 25px; border-radius: 20px;">
+          <div style="width: 300px; background: #f9fafb; padding: 25px; border-radius: 20px; margin-right: 20px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px;">
               <span style="color: #6b7280;">รวมเป็นเงิน</span>
               <span style="font-weight: 500;">฿${subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
@@ -804,7 +804,7 @@ async function generateReceiptPDF(orderId) {
     `;
 
     const opt = {
-      margin: 0,
+      margin: [10, 10, 10, 10],
       filename: `Receipt-${orderId}.pdf`,
       image: { type: 'jpeg', quality: 1 },
       html2canvas: { scale: 3, useCORS: true, letterRendering: true },
@@ -884,7 +884,7 @@ async function generateSalesReportPDF(period) {
               <th style="padding: 12px; text-align: left; background: #f8fafc; color: #64748b; border-bottom: 2px solid #e2e8f0; font-size: 13px;">เลขออเดอร์</th>
               <th style="padding: 12px; text-align: left; background: #f8fafc; color: #64748b; border-bottom: 2px solid #e2e8f0; font-size: 13px;">วันที่/เวลา</th>
               <th style="padding: 12px; text-align: left; background: #f8fafc; color: #64748b; border-bottom: 2px solid #e2e8f0; font-size: 13px;">ลูกค้า</th>
-              <th style="padding: 12px 25px 12px 12px; text-align: right; background: #f8fafc; color: #64748b; border-bottom: 2px solid #e2e8f0; font-size: 13px;">ยอดรวม</th>
+              <th style="padding: 12px 40px 12px 12px; text-align: right; background: #f8fafc; color: #64748b; border-bottom: 2px solid #e2e8f0; font-size: 13px;">ยอดรวม</th>
             </tr>
           </thead>
           <tbody>
@@ -893,7 +893,7 @@ async function generateSalesReportPDF(period) {
                 <td style="padding: 12px; border-bottom: 1px solid #f1f5f9; font-family: monospace; font-weight: 600; color: #334155;">${o.id}</td>
                 <td style="padding: 12px; border-bottom: 1px solid #f1f5f9; color: #64748b; font-size: 13px;">${new Date(o.date).toLocaleString("th-TH")}</td>
                 <td style="padding: 12px; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 13px;">${o.customer}</td>
-                <td style="padding: 12px 25px 12px 12px; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 700; color: #0ea5e9;">฿${o.total.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td style="padding: 12px 40px 12px 12px; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 700; color: #0ea5e9;">฿${o.total.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
               </tr>
             `).join("") || '<tr><td colspan="4" style="text-align:center; padding:40px; color:#94a3b8;">ไม่มีรายการขายในช่วงเวลาที่กำหนด</td></tr>'}
           </tbody>
@@ -907,7 +907,7 @@ async function generateSalesReportPDF(period) {
     `;
 
     const opt = {
-      margin: 10,
+      margin: [10, 10, 10, 10],
       filename: filename,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
