@@ -39,11 +39,13 @@ function previewImage(src, title = "พรีวิวรูปภาพ") {
     modal.id = "image-preview-modal";
     modal.className = "modal";
     modal.style.zIndex = "3000";
+    modal.onclick = function(e) { if(e.target === modal) modal.style.display='none'; };
     modal.innerHTML = `
-      <div class="modal-content" style="width: auto; max-width: 90vw; background: transparent; box-shadow: none; padding: 0; position: relative;">
-        <button onclick="this.closest('.modal').style.display='none'" style="position: absolute; top: -40px; right: 0; background: white; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #334155; font-size: 1.2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><i class="fas fa-times"></i></button>
-        <img id="preview-img-tag" src="" style="max-width: 100%; max-height: 85vh; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); object-fit: contain; background: white;" />
-        <div id="preview-img-title" style="text-align: center; color: white; margin-top: 15px; font-weight: 600; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5);"></div>
+      <div class="modal-content" style="width: auto; max-width: 95vw; background: transparent; box-shadow: none; padding: 0; position: relative; border: none;">
+        <button onclick="this.closest('.modal').style.display='none'" style="position: absolute; top: 15px; right: 15px; background: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #ef4444; font-size: 1.6rem; box-shadow: 0 4px 20px rgba(0,0,0,0.4); z-index: 100; transition: 0.2s;" title="ปิด" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"><i class="fas fa-times-circle"></i></button>
+        <img id="preview-img-tag" src="" onclick="this.closest('.modal').style.display='none'" style="max-width: 100%; max-height: 85vh; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7); object-fit: contain; background: white; cursor: zoom-out;" />
+        <div id="preview-img-title" style="text-align: center; color: white; margin-top: 15px; font-weight: 700; font-size: 1.3rem; text-shadow: 0 2px 10px rgba(0,0,0,0.9);"></div>
+        <p style="text-align: center; color: rgba(255,255,255,0.7); font-size: 0.9rem; margin-top: 5px;">(คลิกที่รูปหรือพื้นหลังเพื่อปิด)</p>
       </div>
     `;
     document.body.appendChild(modal);
