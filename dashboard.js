@@ -441,7 +441,7 @@ function renderInventory() {
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>รูปภาพ</th><th>รหัสสินค้า</th><th>ชื่อสินค้า</th><th>หมวดหมู่</th><th style="text-align: right;">ราคาขาย</th><th style="text-align: center;">สต็อก</th><th style="width:160px; text-align: center;">จัดการ</th></tr>
+            <tr><th>รูปภาพ</th><th>รหัสสินค้า</th><th>ชื่อสินค้า</th><th>รายละเอียด</th><th>หมวดหมู่</th><th style="text-align: right;">ราคาขาย</th><th style="text-align: center;">สต็อก</th><th style="width:160px; text-align: center;">จัดการ</th></tr>
           </thead>
           <tbody id="inv-tbody"></tbody>
         </table>
@@ -491,7 +491,17 @@ function renderInventoryRows() {
   const filtered = products.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
   document.getElementById("inv-tbody").innerHTML = filtered.map(p => `<tr>
     <td style="text-align: center;"><img src="${p.image || 'https://via.placeholder.com/50?text=?'}" style="width: 48px; height: 48px; border-radius: 10px; object-fit: cover; border: 1px solid #eee;" /></td>
-    <td style="font-family: monospace; font-weight: 700;">${p.sku}</td><td>${p.name}</td><td><span class="badge" style="background: #eff6ff; color: #2563eb;">${p.category || 'ทั่วไป'}</span></td><td style="text-align: right; font-weight: 700; color: #7c3aed;">฿${Number(p.price).toLocaleString()}</td>
+    <td style="font-family: monospace; font-weight: 700;">${p.sku}</td>
+    <td>${p.name}</td>
+    <td>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        ${p.color ? `<span style="font-size: 0.75rem; color: #64748b;"><i class="fas fa-palette" style="width: 14px;"></i> ${p.color}</span>` : ''}
+        ${p.prescription ? `<span style="font-size: 0.75rem; color: #64748b;"><i class="fas fa-eye" style="width: 14px;"></i> ${p.prescription}</span>` : ''}
+        ${!p.color && !p.prescription ? '<span style="color: #cbd5e1; font-size: 0.75rem;">-</span>' : ''}
+      </div>
+    </td>
+    <td><span class="badge" style="background: #eff6ff; color: #2563eb;">${p.category || 'ทั่วไป'}</span></td>
+    <td style="text-align: right; font-weight: 700; color: #7c3aed;">฿${Number(p.price).toLocaleString()}</td>
     <td style="text-align: center;"><div style="display:flex; flex-direction:column; gap:4px; align-items:center;"><span class="status-badge ${p.stock <= settings.low_stock_threshold ? 'status-low-stock' : 'status-in-stock'}" style="font-weight:800;">${p.stock}</span><div style="width:60px; height:4px; background:#e2e8f0; border-radius:2px; overflow:hidden;"><div style="width:${Math.min(100, (p.stock/50)*100)}%; height:100%; background:${p.stock <= settings.low_stock_threshold ? '#ef4444' : '#059669'}; transition:width 0.5s ease;"></div></div></div></td>
     <td style="text-align: center;"><div style="display: flex; gap: 8px; justify-content: center;">
       <button onclick="openAddStockModal('${p.sku}')" style="background: #ecfdf5; color: #059669; padding: 8px; border-radius: 10px; border: none; cursor: pointer;" title="เพิ่มสต็อก"><i class="fas fa-plus"></i></button>
