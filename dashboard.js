@@ -32,6 +32,27 @@ function showToast(message, type = "success", title = "") {
   setTimeout(() => { toast.classList.remove("show"); setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
+function previewImage(src, title = "พรีวิวรูปภาพ") {
+  let modal = document.getElementById("image-preview-modal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "image-preview-modal";
+    modal.className = "modal";
+    modal.style.zIndex = "3000";
+    modal.innerHTML = `
+      <div class="modal-content" style="width: auto; max-width: 90vw; background: transparent; box-shadow: none; padding: 0; position: relative;">
+        <button onclick="this.closest('.modal').style.display='none'" style="position: absolute; top: -40px; right: 0; background: white; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #334155; font-size: 1.2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><i class="fas fa-times"></i></button>
+        <img id="preview-img-tag" src="" style="max-width: 100%; max-height: 85vh; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); object-fit: contain; background: white;" />
+        <div id="preview-img-title" style="text-align: center; color: white; margin-top: 15px; font-weight: 600; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5);"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  document.getElementById("preview-img-tag").src = src;
+  document.getElementById("preview-img-title").textContent = title;
+  modal.style.display = "flex";
+}
+
 const originalFetch = window.fetch;
 window.fetch = async function() {
   let [resource, config] = arguments;
@@ -526,7 +547,14 @@ function renderInventoryRows() {
   const q = inventorySearchQuery.toLowerCase();
   const filtered = products.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
   document.getElementById("inv-tbody").innerHTML = filtered.map(p => `<tr>
-    <td style="text-align: center;"><img src="${p.image || 'https://via.placeholder.com/50?text=?'}" style="width: 48px; height: 48px; border-radius: 10px; object-fit: cover; border: 1px solid #eee;" /></td>
+    <td style="text-align: center;">
+      <img src="${p.image || 'https://via.placeholder.com/100?text=?'}" 
+           style="width: 70px; height: 70px; border-radius: 12px; object-fit: cover; border: 1px solid #eee; cursor: pointer; transition: 0.2s;" 
+           title="คลิกเพื่อดูรูปใหญ่"
+           onclick="previewImage(this.src, '${p.name}')"
+           onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)';"
+           onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';" />
+    </td>
     <td style="font-family: monospace; font-weight: 700;">${p.sku}</td>
     <td>${p.name}</td>
     <td>
