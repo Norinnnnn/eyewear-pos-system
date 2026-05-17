@@ -130,7 +130,7 @@ function renderHome() {
         <div class="value">${products.length}</div>
         <p style="font-size: 0.85rem; color: #666; margin-top: 4px;">รวม ${products.reduce((s, p) => s + p.stock, 0)} ชิ้น</p>
       </div>
-      <div class="metric-card">
+      <div class="metric-card" style="cursor: pointer;" onclick="document.getElementById('low-stock-section').scrollIntoView({behavior: 'smooth'})">
         <div class="metric-top"><div><h3>สินค้าใกล้หมด</h3></div><div class="icon-circle" style="background: #fff7ed; color: #ea580c;"><i class="fas fa-exclamation-triangle"></i></div></div>
         <div class="value">${lowStockItems.length}</div>
         <p style="font-size: 0.85rem; color: #666; margin-top: 4px;">ต่ำกว่าเกณฑ์ ${settings.low_stock_threshold} ชิ้น</p>
@@ -139,6 +139,23 @@ function renderHome() {
         <div class="metric-top"><div><h3>ยอดขายสะสม</h3></div><div class="icon-circle" style="background: #fdf2f8; color: #db2777;"><i class="fas fa-chart-line"></i></div></div>
         <div class="value">฿${totalRevenue.toFixed(2)}</div>
         <p style="font-size: 0.85rem; color: #666; margin-top: 4px;">ตั้งแต่เริ่มระบบ</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 1.5rem; background: #f8fafc; border: 1px solid #e2e8f0;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 40px; height: 40px; background: #fff7ed; color: #ea580c; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;"><i class="fas fa-cog"></i></div>
+          <div>
+            <h3 style="margin: 0; font-size: 1.1rem;">ตั้งค่าเกณฑ์สินค้าใกล้หมด</h3>
+            <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: #64748b;">กำหนดจำนวนขั้นต่ำเพื่อรับการแจ้งเตือน</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 6px 15px; border-radius: 12px; border: 1px solid #e2e8f0;">
+          <span style="font-size: 0.9rem; font-weight: 600; color: #475569;">จำนวนขั้นต่ำ:</span>
+          <input type="number" id="threshold" value="${settings.low_stock_threshold}" style="width: 60px; border: none; background: #f1f5f9; text-align: center; font-weight: 800; color: #7c3aed; font-size: 1.1rem; padding: 5px; border-radius: 8px; outline: none;" />
+          <button onclick="updateThreshold()" class="btn-primary" style="padding: 8px 15px; font-size: 0.85rem; border-radius: 8px; background: #ea580c;"><i class="fas fa-save"></i> บันทึก</button>
+        </div>
       </div>
     </div>
 
@@ -158,6 +175,25 @@ function renderHome() {
           <button onclick="switchPage('reports')" class="btn-secondary" style="padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px;"><i class="fas fa-file-invoice-dollar"></i><span>ดูรายงาน</span></button>
           <button onclick="generateSalesReportPDF('today')" class="btn-secondary" style="padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: #0ea5e9; color: white; border: none;"><i class="fas fa-calendar-day"></i><span>รายงานวันนี้ (PDF)</span></button>
           <button onclick="generateSalesReportPDF('monthly')" class="btn-secondary" style="padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: #7c3aed; color: white; border: none;"><i class="fas fa-calendar-alt"></i><span>รายงานเดือนนี้ (PDF)</span></button>
+        </div>
+      </div>
+      <div class="card" id="low-stock-section" style="margin: 0; border-top: 4px solid #ea580c;">
+        <h2 style="color: #ea580c;"><i class="fas fa-exclamation-triangle"></i> สินค้าใกล้หมดสต็อก</h2>
+        <div style="margin-top: 1rem; max-height: 250px; overflow-y: auto; padding-right: 5px;">
+          ${lowStockItems.map(p => `
+            <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
+              <img src="${p.image || 'https://via.placeholder.com/40'}" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;" />
+              <div style="flex: 1;">
+                <div style="font-weight: 600; font-size: 0.9rem;">${p.name}</div>
+                <div style="font-size: 0.75rem; color: #64748b;">รหัส: ${p.sku}</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-weight: 800; color: #ef4444; font-size: 1rem;">${p.stock}</div>
+                <div style="font-size: 0.7rem; color: #94a3b8;">ชิ้นคงเหลือ</div>
+              </div>
+              <button onclick="switchPage('inventory'); setTimeout(() => openAddStockModal('${p.sku}'), 100);" style="background: #fff7ed; color: #ea580c; border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer;"><i class="fas fa-plus"></i></button>
+            </div>
+          `).join("") || `<div style="text-align:center; padding:30px; color:#94a3b8;">ไม่มีสินค้าใกล้หมด</div>`}
         </div>
       </div>
       <div class="card" style="margin: 0;">
