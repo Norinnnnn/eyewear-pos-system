@@ -273,26 +273,75 @@ function addToCart(sku) { const p = products.find(x => x.sku === sku); if (!p) r
 function renderCart() {
   let sub = 0, disc = 0, count = 0;
   const html = cart.map((item, i) => {
-    const promo = promotions.filter(p => p.is_active).find(pr => { const skus = pr.applicable_skus ? pr.applicable_skus.split(",").map(s => s.trim()) : []; return (skus.length === 0 || skus.includes(item.sku)) && item.qty >= pr.min_qty; });
+    const promo = promotions.filter(p => p.is_active).find(pr => { 
+      const skus = pr.applicable_skus ? pr.applicable_skus.split(",").map(s => s.trim()) : []; 
+      return (skus.length === 0 || skus.includes(item.sku)) && item.qty >= pr.min_qty; 
+    });
     let itemDisc = promo ? (promo.discount_type === "fixed" ? Number(promo.discount_value) : (item.price * Number(promo.discount_value) / 100)) : 0;
-    sub += item.price * item.qty; disc += itemDisc * item.qty; count += item.qty;
-    return `<div style="display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center; background:#f8fafc; padding:10px; border-radius:12px;">
-      <div style="flex:1;">
-        <div style="font-weight:600; font-size:0.85rem;">${item.name}</div>
-        <div style="font-size:0.7rem; color:#64748b; margin-top:2px;">
-          ${item.color ? `<i class="fas fa-palette"></i> ${item.color}` : ''}
-          ${item.prescription ? `${item.color?' | ':''}<i class="fas fa-eye"></i> ${item.prescription}` : ''}
+    sub += item.price * item.qty; 
+    disc += itemDisc * item.qty; 
+    count += item.qty;
+    
+    return `
+    <div style="display: flex; flex-direction: column; margin-bottom: 12px; background:#ffffff; padding:15px; border-radius:16px; border: 1px solid #f1f5f9; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+        <div style="flex:1;">
+          <div style="font-weight:700; font-size:0.95rem; color:#1e293b; margin-bottom: 4px;">${item.name}</div>
+          <div style="font-size:0.75rem; color:#64748b; margin-bottom: 4px;">รหัส: <span style="font-family:monospace; font-weight:600;">${item.sku}</span></div>
+          <div style="font-size:0.75rem; color:#64748b; display: flex; gap: 8px; flex-wrap: wrap;">
+            ${item.color ? `<span><i class="fas fa-palette" style="font-size: 0.7rem;"></i> ${item.color}</span>` : ''}
+            ${item.prescription ? `<span><i class="fas fa-eye" style="font-size: 0.7rem;"></i> ${item.prescription}</span>` : ''}
+          </div>
         </div>
-        <div style="font-size:0.75rem; color:#999; margin-top:2px;">฿${item.price.toLocaleString()} x ${item.qty}</div>
+        <button onclick="removeFromCart(${i})" style="color: #94a3b8; border: none; background: none; cursor: pointer; font-size:1.1rem; padding: 0 0 0 10px;"><i class="fas fa-trash-alt"></i></button>
       </div>
-      <div style="font-weight:700; margin-right:10px; color:#7c3aed;">฿${((item.price - itemDisc) * item.qty).toLocaleString()}</div>
-      <button onclick="removeFromCart(${i})" style="color: #ef4444; border: none; background: none; cursor: pointer; font-size:1.1rem;"><i class="fas fa-times"></i></button>
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #f1f5f9; padding-top: 10px;">
+        <div style="display: flex; align-items: center; background: #f8fafc; border-radius: 10px; padding: 2px; border: 1px solid #e2e8f0;">
+          <button onclick="changeCartQty(${i}, -1)" style="width: 28px; height: 28px; border-radius: 8px; border: none; background: white; color: #64748b; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='white'"><i class="fas fa-minus" style="font-size: 0.7rem;"></i></button>
+          <input type="number" value="${item.qty}" min="1" onchange="updateCartQty(${i}, this.value)" style="width: 45px; border: none; background: transparent; text-align: center; font-weight: 700; color: #1e293b; font-size: 0.9rem; -moz-appearance: textfield;" />
+          <button onclick="changeCartQty(${i}, 1)" style="width: 28px; height: 28px; border-radius: 8px; border: none; background: white; color: #7c3aed; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;" onmouseover="this.style.background='#f5f3ff'" onmouseout="this.style.background='white'"><i class="fas fa-plus" style="font-size: 0.7rem;"></i></button>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 0.7rem; color: #94a3b8; text-decoration: line-through; height: 1rem;">${itemDisc > 0 ? `฿${(item.price * item.qty).toLocaleString()}` : ''}</div>
+          <div style="font-weight:800; color:#7c3aed; font-size: 1.1rem;">฿${((item.price - itemDisc) * item.qty).toLocaleString()}</div>
+        </div>
+      </div>
     </div>`;
   }).join("");
+  
   document.getElementById("cart-list").innerHTML = html || `<div style="text-align:center; color:#94a3b8; padding:40px;">ตะกร้าว่าง</div>`;
-  document.getElementById("sub-val").textContent = sub.toLocaleString(); document.getElementById("disc-val").textContent = disc.toLocaleString(); document.getElementById("total-val").textContent = (sub - disc).toLocaleString(); document.getElementById("cart-count").textContent = count;
+  document.getElementById("sub-val").textContent = sub.toLocaleString(); 
+  document.getElementById("disc-val").textContent = disc.toLocaleString(); 
+  document.getElementById("total-val").textContent = (sub - disc).toLocaleString(); 
+  document.getElementById("cart-count").textContent = count;
 }
-function removeFromCart(idx) { cart.splice(idx, 1); renderCart(); }
+
+function removeFromCart(idx) { 
+  cart.splice(idx, 1); 
+  renderCart(); 
+}
+
+function changeCartQty(index, delta) {
+  const newQty = cart[index].qty + delta;
+  updateCartQty(index, newQty);
+}
+
+function updateCartQty(index, newQty) {
+  newQty = parseInt(newQty);
+  if (isNaN(newQty) || newQty < 1) newQty = 1;
+  
+  const item = cart[index];
+  const p = products.find(x => x.sku === item.sku);
+  
+  if (p && newQty > p.stock) {
+    showToast(`สต็อกไม่พอ (มีเพียง ${p.stock} ชิ้น)`, "warning");
+    item.qty = p.stock;
+  } else {
+    item.qty = newQty;
+  }
+  renderCart();
+}
 
 async function checkout() {
   if (cart.length === 0) return showToast("กรุณาเลือกสินค้า", "warning");
