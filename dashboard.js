@@ -671,14 +671,78 @@ async function delPromo(id) { if(!confirm("ลบ?")) return; await fetch(`/api/
 // --- Customers & Prescription ---
 
 function renderCustomers() {
+  const editing = editingCustomerId ? customers.find(x => x.id === editingCustomerId) : null;
   document.getElementById("customers").innerHTML = `
-    <div class="card"><h2><i class="fas fa-user-plus"></i> จัดการลูกค้า</h2><form onsubmit="saveCustomer(event)"><div class="grid" style="grid-template-columns: 1fr 1fr auto; gap:15px;"><input type="text" id="c-phone" placeholder="เบอร์โทรศัพท์" required /><input type="text" id="c-name" placeholder="ชื่อลูกค้า" required /><button type="submit" class="btn-primary">บันทึก</button></div></form></div>
-    <div class="card" style="margin-top:24px; padding:0; overflow:hidden;"><div class="table-wrap"><table><thead><tr><th>เบอร์โทร</th><th>ชื่อ</th><th>จัดการ</th></tr></thead><tbody>${customers.map(c => `<tr><td style="font-weight:700; color:#7c3aed;">${c.phone}</td><td style="font-weight:600;">${c.name}</td><td style="text-align:center;"><button onclick="viewCustomerHistory('${c.phone}')" style="background:#eff6ff; color:#2563eb; border:none; padding:8px 15px; border-radius:10px; cursor:pointer;"><i class="fas fa-history"></i> ประวัติ/ค่าสายตา</button></td></tr>`).join("")}</tbody></table></div></div>
+    <div class="card">
+      <h2><i class="fas fa-user-${editing ? 'edit' : 'plus'}"></i> ${editing ? 'แก้ไขข้อมูลลูกค้า' : 'จัดการลูกค้า'}</h2>
+      <form onsubmit="saveCustomer(event)">
+        <div class="grid" style="grid-template-columns: 1fr 1fr auto; gap:15px;">
+          <input type="text" id="c-phone" value="${editing?.phone || ''}" placeholder="เบอร์โทรศัพท์" required />
+          <input type="text" id="c-name" value="${editing?.name || ''}" placeholder="ชื่อลูกค้า" required />
+          <div style="display: flex; gap: 10px;">
+            <button type="submit" class="btn-primary">${editing ? 'บันทึกการแก้ไข' : 'บันทึก'}</button>
+            ${editing ? `<button type="button" onclick="editingCustomerId=null; renderCustomers();" style="background: #94a3b8; color: white; border: none; padding: 0 20px; border-radius: 12px; cursor: pointer;">ยกเลิก</button>` : ''}
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="card" style="margin-top:24px; padding:0; overflow:hidden;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>เบอร์โทร</th><th>ชื่อ</th><th style="text-align:center;">จัดการ</th></tr>
+          </thead>
+          <tbody>${customers.map(c => `
+            <tr>
+              <td style="font-weight:700; color:#7c3aed;">${c.phone}</td>
+              <td style="font-weight:600;">${c.name}</td>
+              <td style="text-align:center;">
+                <div style="display: flex; gap: 8px; justify-content: center;">
+                  <button onclick="viewCustomerHistory('${c.phone}')" style="background:#eff6ff; color:#2563eb; border:none; padding:8px 15px; border-radius:10px; cursor:pointer;" title="ประวัติ/ค่าสายตา"><i class="fas fa-history"></i></button>
+                  <button onclick="editingCustomerId=${c.id}; renderCustomers();" style="background:#fefce8; color:#ca8a04; border:none; padding:8px 12px; border-radius:10px; cursor:pointer;" title="แก้ไข"><i class="fas fa-edit"></i></button>
+                  <button onclick="delCustomer(${c.id})" style="background:#fef2f2; color:#ef4444; border:none; padding:8px 12px; border-radius:10px; cursor:pointer;" title="ลบ"><i class="fas fa-trash-alt"></i></button>
+                </div>
+              </td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
     <div id="history-modal" class="modal" style="display: none;"><div class="modal-content" style="width: min(100%, 700px);"><div class="modal-header"><h2 id="history-title">ข้อมูลลูกค้า</h2><button onclick="closeHistoryModal()">x</button></div>
     <div id="history-content" style="padding:24px; max-height:550px; overflow-y:auto;"></div></div></div>
   `;
 }
-async function saveCustomer(e) { e.preventDefault(); await fetch("/api/customers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: document.getElementById("c-phone").value, name: document.getElementById("c-name").value }) }); await loadData(); renderCustomers(); }
+async function saveCustomer(e) { 
+  e.preventDefault(); 
+  const data = { phone: document.getElementById("c-phone").value, name: document.getElementById("c-name").value };
+  const method = editingCustomerId ? "PUT" : "POST";
+  const url = editingCustomerId ? `/api/customers/${editingCustomerId}` : "/api/customers";
+  
+  const res = await fetch(url, { 
+    method, 
+    headers: { "Content-Type": "application/json" }, 
+    body: JSON.stringify(data) 
+  });
+  
+  if(res.ok) {
+    showToast(editingCustomerId ? "แก้ไขข้อมูลสำเร็จ" : "บันทึกสำเร็จ");
+    editingCustomerId = null; 
+    await loadData(); 
+    renderCustomers();
+  } else {
+    const err = await res.json();
+    showToast(err.error || "เกิดข้อผิดพลาด", "error");
+  }
+}
+async function delCustomer(id) {
+  if(!confirm("ยืนยันการลบข้อมูลลูกค้า? ประวัติการซื้อและค่าสายตาจะยังคงอยู่ในระบบแต่จะไม่เชื่อมโยงกับลูกค้าคนนี้")) return;
+  const res = await fetch(`/api/customers/${id}`, { method: "DELETE" });
+  if(res.ok) {
+    showToast("ลบข้อมูลลูกค้าเรียบร้อย");
+    await loadData();
+    renderCustomers();
+  }
+}
 function closeHistoryModal() { document.getElementById("history-modal").style.display = "none"; }
 
 async function viewCustomerHistory(phone) {
