@@ -496,17 +496,25 @@ app.post("/api/checkout", authenticateToken, async (req, res) => {
       const product = prods[0];
       if (!product) throw new Error(`ไม่พบสินค้า [${item.sku}] ในฐานข้อมูล`);
       
-      let discountPerUnit = 0;
+      let totalDiscount = 0;
       const promo = activePromos.find(pr => {
         const skus = pr.applicable_skus ? pr.applicable_skus.split(",").map(s => s.trim()) : [];
         return (skus.length === 0 || skus.includes(item.sku)) && item.qty >= pr.min_qty;
       });
-      if (promo) discountPerUnit = promo.discount_type === "fixed" ? Number(promo.discount_value) : (product.price * Number(promo.discount_value) / 100);
 
-      const total = (Number(product.price) - discountPerUnit) * item.qty;
-      const totalDiscount = discountPerUnit * item.qty;
+      if (promo) {
+        if (promo.discount_type === "fixed") {
+          // Calculate discount per bundle: e.g., buy 20 get 100 off means for 40 items you get 200 off
+          totalDiscount = Math.floor(item.qty / promo.min_qty) * Number(promo.discount_value);
+        } else {
+          // Percentage discount is still per item
+          totalDiscount = (product.price * Number(promo.discount_value) / 100) * item.qty;
+        }
+      }
 
-      console.log("Running SQL for item:", item.sku);
+      const total = (Number(product.price) * item.qty) - totalDiscount;
+
+      console.log("Running SQL for item:", item.sku, "Total Discount:", totalDiscount);
       await connection.query("UPDATE products SET stock = stock - ? WHERE sku = ?", [item.qty, item.sku]);
       await connection.query("INSERT INTO sales (order_id, user_id, customer_id, sku, qty, unit_price, discount, total, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [order_id, req.user.id, customer_id, item.sku, item.qty, product.price, totalDiscount, total, payment_method || 'cash']);
