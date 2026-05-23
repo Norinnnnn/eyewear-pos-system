@@ -644,8 +644,20 @@ function renderUsers() {
 async function saveUser(e) { e.preventDefault(); const data = { username: document.getElementById("u-user").value, password: document.getElementById("u-pass").value, name: document.getElementById("u-name").value, role: document.getElementById("u-role").value }; const method = editingUserId ? "PUT" : "POST"; await fetch(editingUserId ? `/api/users/${editingUserId}` : "/api/users", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }); editingUserId = null; await loadData(); renderUsers(); }
 async function delUser(id) { if(id===currentUser.id || !confirm("ลบ?")) return; await fetch(`/api/users/${id}`, { method: "DELETE" }); await loadData(); renderUsers(); }
 
+let tempSelectedSkus = [];
+
 function renderPromotions() {
   const editing = editingPromotionId ? promotions.find(x => x.id === editingPromotionId) : null;
+  
+  // Initialize tempSelectedSkus when starting to edit or add
+  if (editing && (tempSelectedSkus.length === 0 || editingPromotionId !== tempSelectedSkus._id)) {
+    tempSelectedSkus = editing.applicable_skus ? editing.applicable_skus.split(",").map(s => s.trim()).filter(s => s !== "") : [];
+    tempSelectedSkus._id = editingPromotionId;
+  } else if (!editing && tempSelectedSkus._id) {
+    tempSelectedSkus = [];
+    delete tempSelectedSkus._id;
+  }
+
   document.getElementById("promotions").innerHTML = `
     <div class="card"><h2>${editing ? '<i class="fas fa-tag"></i> แก้ไขโปรโมชั่น' : '<i class="fas fa-plus-circle"></i> เพิ่มโปรโมชั่น'}</h2>
       <form onsubmit="savePromo(event)"><div class="grid">
@@ -653,44 +665,140 @@ function renderPromotions() {
         <label>ขั้นต่ำ (จำนวนชิ้น)<input type="number" id="p-qty" value="${editing?.min_qty || 1}" required /></label>
         <label>ประเภทส่วนลด<select id="p-type"><option value="fixed" ${editing?.discount_type==='fixed'?'selected':''}>บาท (Fixed Amount)</option><option value="percent" ${editing?.discount_type==='percent'?'selected':''}>% (Percentage)</option></select></label>
         <label>มูลค่าส่วนลด<input type="number" id="p-val" value="${editing?.discount_value || 0}" required /></label>
-        <label>สินค้าที่ร่วมรายการ (เลือกจากรายการด้านล่าง)<div style="display:flex; gap:5px;">
-          <input type="text" id="p-skus" value="${editing?.applicable_skus || ''}" placeholder="ว่างคือใช้ได้กับสินค้าทั้งหมด" list="sku-list" />
-          <datalist id="sku-list">${products.map(p => `<option value="${p.sku}">${p.name}</option>`).join("")}</datalist>
-        </div><small style="color:#64748b;">* ใส่หลายรหัสให้คั่นด้วยเครื่องหมายจุลภาค ( , )</small></label>
+        
+        <label style="grid-column: 1 / -1;">สินค้าที่ร่วมรายการ
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-top: 5px;">
+            <div id="selected-skus-container" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+              ${tempSelectedSkus.length === 0 ? '<span style="color:#94a3b8; font-size:0.85rem;">ยังไม่มีการเลือกสินค้า (ใช้ได้กับสินค้าทั้งหมด)</span>' : 
+                tempSelectedSkus.map(sku => {
+                  const p = products.find(x => x.sku === sku);
+                  return `<div style="background:#7c3aed; color:white; padding:4px 12px; border-radius:8px; font-size:0.8rem; display:flex; align-items:center; gap:8px;">
+                    <span>${p ? p.name : sku} (${sku})</span>
+                    <button type="button" onclick="removeSkuFromPromo('${sku}')" style="background:none; border:none; color:white; cursor:pointer; padding:0; display:flex; align-items:center;"><i class="fas fa-times-circle"></i></button>
+                  </div>`;
+                }).join("")
+              }
+            </div>
+            <div style="position:relative;">
+              <div style="display:flex; gap:8px;">
+                <input type="text" id="sku-search-input" placeholder="พิมพ์รหัสหรือชื่อสินค้าเพื่อค้นหา..." oninput="searchProductForPromo(this.value)" style="margin:0;" autocomplete="off" />
+                <button type="button" onclick="document.getElementById('sku-search-input').value=''; searchProductForPromo('')" class="btn-secondary" style="padding:0 15px; border-radius:10px;"><i class="fas fa-sync-alt"></i></button>
+              </div>
+              <div id="sku-search-results" style="position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #e2e8f0; border-radius:12px; margin-top:5px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1); z-index:100; display:none; max-height:250px; overflow-y:auto; padding:5px;">
+              </div>
+            </div>
+          </div>
+        </label>
+
         <label>สถานะโปรโมชั่น<select id="p-status"><option value="1" ${editing?.is_active?'selected':''}>เปิดใช้งาน</option><option value="0" ${!editing?.is_active?'selected':''}>ปิดใช้งาน</option></select></label>
       </div>
-      <div style="margin-top: 15px;">
-        <button type="submit" class="btn-primary" style="padding: 10px 30px;">${editing ? '<i class="fas fa-save"></i> บันทึกการแก้ไข' : '<i class="fas fa-plus"></i> เพิ่มโปรโมชั่น'}</button>
-        ${editing ? `<button type="button" onclick="editingPromotionId=null; renderPromotions();" style="background: #94a3b8; color: white; margin-left: 10px; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer;"><i class="fas fa-times"></i> ยกเลิก</button>` : ''}
+      <div style="margin-top: 20px; display:flex; gap:12px;">
+        <button type="submit" class="btn-primary" style="padding: 12px 40px; border-radius:12px; font-weight:700;"><i class="fas fa-check-circle"></i> ${editing ? 'บันทึกการแก้ไข' : 'สร้างโปรโมชั่นใหม่'}</button>
+        ${editing ? `<button type="button" onclick="editingPromotionId=null; tempSelectedSkus=[]; renderPromotions();" style="background: #f1f5f9; color: #64748b; border: none; padding: 12px 25px; border-radius: 12px; cursor: pointer; font-weight:600;"><i class="fas fa-times"></i> ยกเลิก</button>` : ''}
       </div></form>
     </div>
-    <div class="card" style="padding:0; overflow:hidden;"><div class="table-wrap"><table>
+    <div class="card" style="padding:0; overflow:hidden; border:none; box-shadow:var(--shadow);"><div class="table-wrap"><table>
       <thead style="background:#f8fafc;"><tr><th>ชื่อโปรโมชั่น</th><th>สินค้าที่ร่วมรายการ</th><th>เงื่อนไข</th><th>ส่วนลด</th><th style="text-align:center;">สถานะ</th><th style="text-align:center;">จัดการ</th></tr></thead>
       <tbody>${promotions.map(p => {
         let applyText = "สินค้าทั้งหมด";
         if (p.applicable_skus) {
-          const skus = p.applicable_skus.split(",").map(s => s.trim());
-          if (skus.length > 0 && skus[0] !== "") {
+          const skus = p.applicable_skus.split(",").map(s => s.trim()).filter(s => s !== "");
+          if (skus.length > 0) {
             const names = skus.map(s => products.find(prod => prod.sku === s)?.name || s);
             applyText = names.length > 2 ? `${names.slice(0, 2).join(", ")} และอีก ${names.length - 2} รายการ` : names.join(", ");
           }
         }
         return `<tr>
-          <td style="font-weight:600; color:#1e293b;">${p.name}</td>
-          <td><span class="badge" style="background:${p.applicable_skus ? '#fef3c7' : '#ecfdf5'}; color:${p.applicable_skus ? '#92400e' : '#065f46'}; font-size: 0.75rem;">${applyText}</span></td>
-          <td>ซื้อครบ ${p.min_qty} ชิ้น</td>
-          <td style="font-weight:700; color:#7c3aed;">${p.discount_type==='fixed'?'฿':''}${Number(p.discount_value).toLocaleString()}${p.discount_type==='percent'?'%':''}</td>
-          <td style="text-align:center;"><span class="status-badge ${p.is_active ? 'status-in-stock' : 'status-low-stock'}">${p.is_active?'เปิด':'ปิด'}</span></td>
-          <td style="text-align:center;"><div style="display:flex; gap:8px; justify-content:center;">
-            <button onclick="editingPromotionId=${p.id}; renderPromotions();" style="background: #eff6ff; color: #2563eb; padding: 8px; border-radius: 8px; border:none; cursor:pointer;" title="แก้ไข"><i class="fas fa-edit"></i></button>
-            <button onclick="delPromo(${p.id})" style="background:#fef2f2; color: #ef4444; padding: 8px; border-radius: 8px; border:none; cursor:pointer;" title="ลบ"><i class="fas fa-trash-alt"></i></button>
+          <td style="font-weight:700; color:#1e293b;">${p.name}</td>
+          <td><span class="badge" style="background:${p.applicable_skus ? '#f5f3ff' : '#ecfdf5'}; color:${p.applicable_skus ? '#7c3aed' : '#059669'}; font-size: 0.75rem;">${applyText}</span></td>
+          <td>ซื้อครบ <span style="font-weight:700;">${p.min_qty}</span> ชิ้น</td>
+          <td style="font-weight:800; color:#7c3aed; font-size:1.1rem;">${p.discount_type==='fixed'?'฿':''}${Number(p.discount_value).toLocaleString()}${p.discount_type==='percent'?'%':''}</td>
+          <td style="text-align:center;"><span class="status-badge ${p.is_active ? 'status-in-stock' : 'status-low-stock'}">${p.is_active?'เปิดใช้งาน':'ปิดใช้งาน'}</span></td>
+          <td style="text-align:center;"><div style="display:flex; gap:10px; justify-content:center;">
+            <button onclick="editingPromotionId=${p.id}; tempSelectedSkus=[]; renderPromotions();" style="background: #f5f3ff; color: #7c3aed; width:36px; height:36px; border-radius:10px; border:none; cursor:pointer;" title="แก้ไข"><i class="fas fa-edit"></i></button>
+            <button onclick="delPromo(${p.id})" style="background:#fef2f2; color: #ef4444; width:36px; height:36px; border-radius:10px; border:none; cursor:pointer;" title="ลบ"><i class="fas fa-trash-alt"></i></button>
           </div></td>
         </tr>`;
       }).join("")}</tbody>
     </table></div></div>
   `;
 }
-async function savePromo(e) { e.preventDefault(); const data = { name: document.getElementById("p-name").value, min_qty: document.getElementById("p-qty").value, discount_type: document.getElementById("p-type").value, discount_value: document.getElementById("p-val").value, applicable_skus: document.getElementById("p-skus").value, is_active: document.getElementById("p-status").value }; const method = editingPromotionId ? "PUT" : "POST"; await fetch(editingPromotionId ? `/api/promotions/${editingPromotionId}` : "/api/promotions", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }); editingPromotionId = null; await loadData(); renderPromotions(); }
+
+function searchProductForPromo(val) {
+  const resultsDiv = document.getElementById("sku-search-results");
+  if (!val.trim()) { resultsDiv.style.display = "none"; return; }
+  
+  const filtered = products.filter(p => 
+    (p.name.toLowerCase().includes(val.toLowerCase()) || p.sku.toLowerCase().includes(val.toLowerCase())) &&
+    !tempSelectedSkus.includes(p.sku)
+  ).slice(0, 10);
+  
+  if (filtered.length === 0) {
+    resultsDiv.innerHTML = `<div style="padding:15px; text-align:center; color:#94a3b8; font-size:0.9rem;">ไม่พบสินค้าที่ตรงกับคำค้นหา</div>`;
+  } else {
+    resultsDiv.innerHTML = filtered.map(p => `
+      <div onclick="addSkuToPromo('${p.sku}')" style="padding:10px 15px; cursor:pointer; display:flex; align-items:center; gap:12px; border-bottom:1px solid #f1f5f9; transition:0.2s;" onmouseover="this.style.background='#f5f3ff'" onmouseout="this.style.background='transparent'">
+        <img src="${p.image || 'https://via.placeholder.com/40'}" style="width:40px; height:40px; border-radius:8px; object-fit:cover;" />
+        <div style="flex:1;">
+          <div style="font-weight:600; font-size:0.9rem; color:#1e293b;">${p.name}</div>
+          <div style="font-size:0.75rem; color:#64748b;">รหัส: ${p.sku} | ราคา: ฿${Number(p.price).toLocaleString()}</div>
+        </div>
+        <i class="fas fa-plus-circle" style="color:#7c3aed;"></i>
+      </div>
+    `).join("");
+  }
+  resultsDiv.style.display = "block";
+}
+
+function addSkuToPromo(sku) {
+  if (!tempSelectedSkus.includes(sku)) {
+    tempSelectedSkus.push(sku);
+    document.getElementById("sku-search-input").value = "";
+    document.getElementById("sku-search-results").style.display = "none";
+    renderPromotions();
+  }
+}
+
+function removeSkuFromPromo(sku) {
+  tempSelectedSkus = tempSelectedSkus.filter(s => s !== sku);
+  const editing = editingPromotionId ? promotions.find(x => x.id === editingPromotionId) : null;
+  if (editing) tempSelectedSkus._id = editingPromotionId;
+  renderPromotions();
+}
+
+async function savePromo(e) { 
+  e.preventDefault(); 
+  const data = { 
+    name: document.getElementById("p-name").value, 
+    min_qty: document.getElementById("p-qty").value, 
+    discount_type: document.getElementById("p-type").value, 
+    discount_value: document.getElementById("p-val").value, 
+    applicable_skus: tempSelectedSkus.join(","), 
+    is_active: document.getElementById("p-status").value 
+  }; 
+  const method = editingPromotionId ? "PUT" : "POST"; 
+  const url = editingPromotionId ? `/api/promotions/${editingPromotionId}` : "/api/promotions";
+  
+  try {
+    const res = await fetch(url, { 
+      method, 
+      headers: { "Content-Type": "application/json" }, 
+      body: JSON.stringify(data) 
+    }); 
+    if (res.ok) {
+      showToast(editingPromotionId ? "อัปเดตโปรโมชั่นสำเร็จ" : "สร้างโปรโมชั่นใหม่สำเร็จ");
+      editingPromotionId = null; 
+      tempSelectedSkus = [];
+      await loadData(); 
+      renderPromotions(); 
+    } else {
+      const err = await res.json();
+      showToast(err.error || "ล้มเหลว", "error");
+    }
+  } catch (err) {
+    showToast("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้", "error");
+  }
+}
 async function delPromo(id) { if(!confirm("ลบ?")) return; await fetch(`/api/promotions/${id}`, { method: "DELETE" }); await loadData(); renderPromotions(); }
 
 // --- Customers & Prescription ---
