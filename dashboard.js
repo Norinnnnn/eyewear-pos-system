@@ -184,7 +184,18 @@ function renderHome() {
 
     <div class="card" style="margin-top: 1.5rem;">
       <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
-        <div><h2><i class="fas fa-chart-area"></i> แนวโน้มยอดขาย (7 วันล่าสุด)</h2><div style="height: 300px;"><canvas id="salesChart"></canvas></div></div>
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+            <h2 style="margin: 0;"><i class="fas fa-chart-area"></i> แนวโน้มยอดขาย</h2>
+            <div style="display: flex; gap: 8px; align-items: center; background: #f8fafc; padding: 5px 12px; border-radius: 12px; border: 1px solid #e2e8f0;">
+              <input type="date" id="chart-start" style="border: none; background: transparent; font-size: 0.8rem; color: #475569; outline: none;" />
+              <span style="color: #94a3b8; font-size: 0.8rem;">ถึง</span>
+              <input type="date" id="chart-end" style="border: none; background: transparent; font-size: 0.8rem; color: #475569; outline: none;" />
+              <button onclick="renderSalesChart()" style="background: #7c3aed; color: white; border: none; width: 28px; height: 28px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;" onmouseover="this.style.background='#6d28d9'" onmouseout="this.style.background='#7c3aed'"><i class="fas fa-search" style="font-size: 0.75rem;"></i></button>
+            </div>
+          </div>
+          <div style="height: 300px;"><canvas id="salesChart"></canvas></div>
+        </div>
         <div><h2><i class="fas fa-chart-pie"></i> สัดส่วนการขาย</h2><div style="height: 300px;"><canvas id="categoryChart"></canvas></div></div>
       </div>
     </div>
@@ -237,6 +248,11 @@ function renderHome() {
       </div>
     </div>
   `;
+  
+  const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  document.getElementById("chart-start").value = sevenDaysAgo.toISOString().split('T')[0];
+  document.getElementById("chart-end").value = new Date().toISOString().split('T')[0];
+  
   renderCharts();
 }
 
@@ -244,13 +260,33 @@ function renderCharts() { renderSalesChart(); renderCategoryChart(); }
 
 function renderSalesChart() {
   const ctx = document.getElementById('salesChart'); if (!ctx) return;
+  const startVal = document.getElementById("chart-start")?.value;
+  const endVal = document.getElementById("chart-end")?.value;
+  
   const labels = []; const dataPoints = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i); const dateStr = d.toLocaleDateString();
-    labels.push(d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
-    const daySales = sales.filter(s => new Date(s.sold_at).toLocaleDateString() === dateStr);
-    dataPoints.push(daySales.reduce((sum, s) => sum + Number(s.total || 0), 0));
+  
+  if (startVal && endVal) {
+    let current = new Date(startVal);
+    const end = new Date(endVal);
+    const diffDays = Math.ceil(Math.abs(end - current) / (1000 * 60 * 60 * 24));
+    if (diffDays > 366) { showToast("กรุณาเลือกช่วงเวลาไม่เกิน 1 ปี", "warning"); return; }
+    
+    while (current <= end) {
+      const dateStr = current.toLocaleDateString();
+      labels.push(current.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
+      const daySales = sales.filter(s => new Date(s.sold_at).toLocaleDateString() === dateStr);
+      dataPoints.push(daySales.reduce((sum, s) => sum + Number(s.total || 0), 0));
+      current.setDate(current.getDate() + 1);
+    }
+  } else {
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i); const dateStr = d.toLocaleDateString();
+      labels.push(d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
+      const daySales = sales.filter(s => new Date(s.sold_at).toLocaleDateString() === dateStr);
+      dataPoints.push(daySales.reduce((sum, s) => sum + Number(s.total || 0), 0));
+    }
   }
+  
   if (window.mySalesChart) window.mySalesChart.destroy();
   window.mySalesChart = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: 'ยอดขาย', data: dataPoints, borderColor: '#7c3aed', backgroundColor: 'rgba(124, 58, 237, 0.1)', fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
 }
