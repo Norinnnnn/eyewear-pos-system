@@ -278,7 +278,7 @@ function renderPOS() {
         <h2 style="display: flex; align-items: center; gap: 10px;"><i class="fas fa-shopping-cart"></i> ระบบ POS ขายหน้าร้าน</h2>
         <div class="grid" style="grid-template-columns: 2fr 1fr; gap: 10px;">
           <input type="text" id="pos-search" placeholder="ค้นหาชื่อหรือรหัสสินค้า..." oninput="handlePOSSearch(this.value)" />
-          <input type="text" id="pos-customer" placeholder="เบอร์โทรลูกค้า" oninput="handlePOSCustomer(this.value)" list="cust-list-pos" />
+          <input type="text" id="pos-customer" placeholder="เบอร์โทรลูกค้า" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,''); handlePOSCustomer(this.value)" list="cust-list-pos" />
           <datalist id="cust-list-pos">${customers.map(c => `<option value="${c.phone}">${c.name}</option>`).join("")}</datalist>
         </div>
         <div id="pos-cust-info" style="margin: 10px 0; color: #7c3aed; font-weight: 500; height: 1.2rem;"></div>
@@ -326,7 +326,7 @@ function renderPOSProductList(items) {
 }
 
 function handlePOSSearch(val) { const filtered = products.filter(p => p.name.toLowerCase().includes(val.toLowerCase()) || p.sku.toLowerCase().includes(val.toLowerCase())); document.getElementById("pos-product-grid").innerHTML = renderPOSProductList(filtered); }
-function handlePOSCustomer(phone) { const c = customers.find(x => x.phone === phone); const info = document.getElementById("pos-cust-info"); if (c) info.innerHTML = `<i class="fas fa-user-check"></i> ลูกค้าประจำ: ${c.name}`; else if (phone.length>=9) info.innerHTML = `<i class="fas fa-user-plus"></i> ลูกค้าใหม่: จะบันทึกเมื่อขายเสร็จ`; else info.textContent = ""; }
+function handlePOSCustomer(phone) { const c = customers.find(x => x.phone === phone); const info = document.getElementById("pos-cust-info"); if (c) info.innerHTML = `<i class="fas fa-user-check"></i> ลูกค้าประจำ: ${c.name}`; else if (phone.length === 10) info.innerHTML = `<i class="fas fa-user-plus"></i> ลูกค้าใหม่: จะบันทึกเมื่อขายเสร็จ`; else info.textContent = ""; }
 function filterPOSByCategory(cat) { document.querySelectorAll(".btn-category").forEach(btn => btn.classList.remove("active")); if(cat==="") document.getElementById("cat-all").classList.add("active"); else { const type = productTypes.find(t=>t.name===cat); if(type) document.getElementById(`cat-${type.id}`)?.classList.add("active"); } const filtered = cat === "" ? products : products.filter(p => p.category === cat); document.getElementById("pos-product-grid").innerHTML = renderPOSProductList(filtered); }
 function addToCart(sku) { const p = products.find(x => x.sku === sku); if (!p) return; const item = cart.find(x => x.sku === sku); if (item) { if (item.qty + 1 > p.stock) return showToast("สต็อกไม่พอ", "warning"); item.qty++; } else { if (p.stock < 1) return showToast("สินค้าหมด", "error"); cart.push({ sku, name: p.name, price: Number(p.price), qty: 1, color: p.color, prescription: p.prescription }); } renderCart(); }
 
@@ -496,6 +496,9 @@ function calculateChange(total) {
 async function finalizeCheckout(totalAmount) {
   const method = document.querySelector('input[name="pay-method"]:checked').value;
   const received = parseFloat(document.getElementById("pay-received").value) || 0;
+  const phone = document.getElementById("pos-customer").value;
+  
+  if (phone && phone.length !== 10) return showToast("กรุณากรอกเบอร์โทรให้ครบ 10 หลัก", "warning");
   if (method === "cash" && received < totalAmount) return showToast("ยอดเงินไม่พอ", "warning");
   const btn = event.target.closest('button'); btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
   try {
@@ -810,7 +813,7 @@ function renderCustomers() {
       <h2><i class="fas fa-user-${editing ? 'edit' : 'plus'}"></i> ${editing ? 'แก้ไขข้อมูลลูกค้า' : 'จัดการลูกค้า'}</h2>
       <form onsubmit="saveCustomer(event)">
         <div class="grid" style="grid-template-columns: 1fr 1fr auto; gap:15px;">
-          <input type="text" id="c-phone" value="${editing?.phone || ''}" placeholder="เบอร์โทรศัพท์" required />
+          <input type="text" id="c-phone" value="${editing?.phone || ''}" placeholder="เบอร์โทรศัพท์" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'')" required />
           <input type="text" id="c-name" value="${editing?.name || ''}" placeholder="ชื่อลูกค้า" required />
           <div style="display: flex; gap: 10px;">
             <button type="submit" class="btn-primary">${editing ? 'บันทึกการแก้ไข' : 'บันทึก'}</button>
@@ -847,7 +850,12 @@ function renderCustomers() {
 }
 async function saveCustomer(e) { 
   e.preventDefault(); 
-  const data = { phone: document.getElementById("c-phone").value, name: document.getElementById("c-name").value };
+  const phone = document.getElementById("c-phone").value;
+  const name = document.getElementById("c-name").value;
+  
+  if (phone.length !== 10) return showToast("กรุณากรอกเบอร์โทรให้ครบ 10 หลัก", "warning");
+  
+  const data = { phone, name };
   const method = editingCustomerId ? "PUT" : "POST";
   const url = editingCustomerId ? `/api/customers/${editingCustomerId}` : "/api/customers";
   
