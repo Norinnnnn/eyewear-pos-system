@@ -647,21 +647,46 @@ async function delUser(id) { if(id===currentUser.id || !confirm("ลบ?")) retu
 function renderPromotions() {
   const editing = editingPromotionId ? promotions.find(x => x.id === editingPromotionId) : null;
   document.getElementById("promotions").innerHTML = `
-    <div class="card"><h2>${editing ? '<i class="fas fa-tag"></i> แก้ไขโปร' : '<i class="fas fa-plus-circle"></i> เพิ่มโปร'}</h2>
+    <div class="card"><h2>${editing ? '<i class="fas fa-tag"></i> แก้ไขโปรโมชั่น' : '<i class="fas fa-plus-circle"></i> เพิ่มโปรโมชั่น'}</h2>
       <form onsubmit="savePromo(event)"><div class="grid">
-        <label>ชื่อโปร<input type="text" id="p-name" value="${editing?.name || ''}" required /></label>
-        <label>ขั้นต่ำ<input type="number" id="p-qty" value="${editing?.min_qty || 1}" /></label>
-        <label>ประเภท<select id="p-type"><option value="fixed" ${editing?.discount_type==='fixed'?'selected':''}>บาท</option><option value="percent" ${editing?.discount_type==='percent'?'selected':''}>%</option></select></label>
-        <label>ส่วนลด<input type="number" id="p-val" value="${editing?.discount_value || 0}" /></label>
-        <label>สินค้า (รหัสสินค้า, คั่นด้วยคอมม่า)<input type="text" id="p-skus" value="${editing?.applicable_skus || ''}" placeholder="ว่างคือทั้งหมด" /></label>
-        <label>สถานะ<select id="p-status"><option value="1" ${editing?.is_active?'selected':''}>เปิด</option><option value="0" ${!editing?.is_active?'selected':''}>ปิด</option></select></label>
-      </div><button type="submit" class="btn-primary">${editing ? '<i class="fas fa-save"></i> บันทึก' : '<i class="fas fa-plus"></i> เพิ่ม'}</button>
-      ${editing ? `<button type="button" onclick="editingPromotionId=null; renderPromotions();" style="background: #94a3b8; color: white; margin-left: 10px; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer;"><i class="fas fa-times"></i> ยกเลิก</button>` : ''}</form>
+        <label>ชื่อโปรโมชั่น<input type="text" id="p-name" value="${editing?.name || ''}" required placeholder="เช่น โปรซื้อ 20 แถม 1 หรือ ลด 100 บาท" /></label>
+        <label>ขั้นต่ำ (จำนวนชิ้น)<input type="number" id="p-qty" value="${editing?.min_qty || 1}" required /></label>
+        <label>ประเภทส่วนลด<select id="p-type"><option value="fixed" ${editing?.discount_type==='fixed'?'selected':''}>บาท (Fixed Amount)</option><option value="percent" ${editing?.discount_type==='percent'?'selected':''}>% (Percentage)</option></select></label>
+        <label>มูลค่าส่วนลด<input type="number" id="p-val" value="${editing?.discount_value || 0}" required /></label>
+        <label>สินค้าที่ร่วมรายการ (เลือกจากรายการด้านล่าง)<div style="display:flex; gap:5px;">
+          <input type="text" id="p-skus" value="${editing?.applicable_skus || ''}" placeholder="ว่างคือใช้ได้กับสินค้าทั้งหมด" list="sku-list" />
+          <datalist id="sku-list">${products.map(p => `<option value="${p.sku}">${p.name}</option>`).join("")}</datalist>
+        </div><small style="color:#64748b;">* ใส่หลายรหัสให้คั่นด้วยเครื่องหมายจุลภาค ( , )</small></label>
+        <label>สถานะโปรโมชั่น<select id="p-status"><option value="1" ${editing?.is_active?'selected':''}>เปิดใช้งาน</option><option value="0" ${!editing?.is_active?'selected':''}>ปิดใช้งาน</option></select></label>
+      </div>
+      <div style="margin-top: 15px;">
+        <button type="submit" class="btn-primary" style="padding: 10px 30px;">${editing ? '<i class="fas fa-save"></i> บันทึกการแก้ไข' : '<i class="fas fa-plus"></i> เพิ่มโปรโมชั่น'}</button>
+        ${editing ? `<button type="button" onclick="editingPromotionId=null; renderPromotions();" style="background: #94a3b8; color: white; margin-left: 10px; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer;"><i class="fas fa-times"></i> ยกเลิก</button>` : ''}
+      </div></form>
     </div>
-    <div class="card"><div class="table-wrap"><table>
-      <thead><tr><th>ชื่อ</th><th>เงื่อนไข</th><th>ส่วนลด</th><th>สถานะ</th><th>จัดการ</th></tr></thead>
-      <tbody>${promotions.map(p => `<tr><td>${p.name}</td><td>${p.min_qty} ชิ้น</td><td>${p.discount_type==='fixed'?'฿':''}${p.discount_value}${p.discount_type==='percent'?'%':''}</td>
-        <td>${p.is_active?'เปิด':'ปิด'}</td><td><button onclick="editingPromotionId=${p.id}; renderPromotions();" style="background: #eff6ff; color: #2563eb; padding: 8px; border-radius: 8px; margin-right: 5px;"><i class="fas fa-edit"></i></button><button onclick="delPromo(${p.id})" style="background:#fef2f2; color: #ef4444; padding: 8px; border-radius: 8px;"><i class="fas fa-trash-alt"></i></button></td></tr>`).join("")}</tbody>
+    <div class="card" style="padding:0; overflow:hidden;"><div class="table-wrap"><table>
+      <thead style="background:#f8fafc;"><tr><th>ชื่อโปรโมชั่น</th><th>สินค้าที่ร่วมรายการ</th><th>เงื่อนไข</th><th>ส่วนลด</th><th style="text-align:center;">สถานะ</th><th style="text-align:center;">จัดการ</th></tr></thead>
+      <tbody>${promotions.map(p => {
+        let applyText = "สินค้าทั้งหมด";
+        if (p.applicable_skus) {
+          const skus = p.applicable_skus.split(",").map(s => s.trim());
+          if (skus.length > 0 && skus[0] !== "") {
+            const names = skus.map(s => products.find(prod => prod.sku === s)?.name || s);
+            applyText = names.length > 2 ? `${names.slice(0, 2).join(", ")} และอีก ${names.length - 2} รายการ` : names.join(", ");
+          }
+        }
+        return `<tr>
+          <td style="font-weight:600; color:#1e293b;">${p.name}</td>
+          <td><span class="badge" style="background:${p.applicable_skus ? '#fef3c7' : '#ecfdf5'}; color:${p.applicable_skus ? '#92400e' : '#065f46'}; font-size: 0.75rem;">${applyText}</span></td>
+          <td>ซื้อครบ ${p.min_qty} ชิ้น</td>
+          <td style="font-weight:700; color:#7c3aed;">${p.discount_type==='fixed'?'฿':''}${Number(p.discount_value).toLocaleString()}${p.discount_type==='percent'?'%':''}</td>
+          <td style="text-align:center;"><span class="status-badge ${p.is_active ? 'status-in-stock' : 'status-low-stock'}">${p.is_active?'เปิด':'ปิด'}</span></td>
+          <td style="text-align:center;"><div style="display:flex; gap:8px; justify-content:center;">
+            <button onclick="editingPromotionId=${p.id}; renderPromotions();" style="background: #eff6ff; color: #2563eb; padding: 8px; border-radius: 8px; border:none; cursor:pointer;" title="แก้ไข"><i class="fas fa-edit"></i></button>
+            <button onclick="delPromo(${p.id})" style="background:#fef2f2; color: #ef4444; padding: 8px; border-radius: 8px; border:none; cursor:pointer;" title="ลบ"><i class="fas fa-trash-alt"></i></button>
+          </div></td>
+        </tr>`;
+      }).join("")}</tbody>
     </table></div></div>
   `;
 }
