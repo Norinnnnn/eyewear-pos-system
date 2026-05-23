@@ -483,14 +483,10 @@ async function checkout() {
         </div>
         <div style="margin-bottom: 20px;">
           <label style="font-weight: 700; display: block; margin-bottom: 10px; color: #374151;">ช่องทางชำระเงิน</label>
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <label class="pay-method-btn">
               <input type="radio" name="pay-method" value="cash" checked onchange="togglePayInputs()" />
               <div class="method-box"><i class="fas fa-money-bill-alt"></i><span>เงินสด</span></div>
-            </label>
-            <label class="pay-method-btn">
-              <input type="radio" name="pay-method" value="qr" onchange="togglePayInputs()" />
-              <div class="method-box"><i class="fas fa-qrcode"></i><span>QR Code</span></div>
             </label>
             <label class="pay-method-btn">
               <input type="radio" name="pay-method" value="transfer" onchange="togglePayInputs()" />
@@ -499,6 +495,14 @@ async function checkout() {
           </div>
         </div>
         <div id="cash-inputs">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px;">
+            <button onclick="setCashAmount(1000, ${total})" class="btn-cash-quick">1,000</button>
+            <button onclick="setCashAmount(500, ${total})" class="btn-cash-quick">500</button>
+            <button onclick="setCashAmount(100, ${total})" class="btn-cash-quick">100</button>
+            <button onclick="setCashAmount(50, ${total})" class="btn-cash-quick">50</button>
+            <button onclick="setCashAmount(20, ${total})" class="btn-cash-quick">20</button>
+            <button onclick="setCashAmount(${total}, ${total})" class="btn-cash-quick" style="background:#7c3aed; color:white; border-color:#7c3aed;">พอดี</button>
+          </div>
           <input type="number" id="pay-received" placeholder="รับเงินมา (บาท)" style="width: 100%; padding: 15px; font-size: 1.8rem; text-align: center; border-radius:16px; border:2px solid #e2e8f0; font-weight:800;" oninput="calculateChange(${total})" />
           <div id="pay-change" style="text-align: right; margin-top: 10px; font-weight: 700; color: #059669; font-size: 1.3rem;">เงินทอน: ฿0.00</div>
         </div>
@@ -513,6 +517,8 @@ async function checkout() {
       .method-box i { font-size: 1.2rem; }
       .method-box span { font-size: 0.8rem; font-weight: 600; }
       .pay-method-btn input:checked + .method-box { border-color: #7c3aed; background: #f5f3ff; color: #7c3aed; }
+      .btn-cash-quick { background: white; border: 1px solid #e2e8f0; padding: 10px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.2s; color: #475569; font-size: 0.9rem; }
+      .btn-cash-quick:hover { border-color: #7c3aed; color: #7c3aed; background: #f5f3ff; }
     </style>
   `;
   modal.style.display = "flex";
@@ -522,6 +528,12 @@ async function checkout() {
 function togglePayInputs() {
   const method = document.querySelector('input[name="pay-method"]:checked').value;
   document.getElementById("cash-inputs").style.display = method === "cash" ? "block" : "none";
+}
+
+function setCashAmount(amount, total) {
+  const input = document.getElementById("pay-received");
+  input.value = amount;
+  calculateChange(total);
 }
 
 function calculateChange(total) {
