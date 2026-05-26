@@ -436,18 +436,36 @@ app.post("/api/products/:sku/add-stock", authenticateToken, async (req, res) => 
 
 app.get("/api/stock-logs", authenticateToken, async (req, res) => {
   const { start_date, end_date, sku } = req.query;
+  console.log("DEBUG: Fetching stock logs filters:", { start_date, end_date, sku });
+  
   let sql = `SELECT l.*, p.name as product_name, u.name as user_name FROM stock_logs l 
              LEFT JOIN products p ON l.sku = p.sku 
              LEFT JOIN users u ON l.user_id = u.id WHERE 1=1`;
   const params = [];
-  if (start_date) { sql += " AND DATE(l.created_at) >= ?"; params.push(start_date); }
-  if (end_date) { sql += " AND DATE(l.created_at) <= ?"; params.push(end_date); }
-  if (sku) { sql += " AND (l.sku LIKE ? OR p.name LIKE ?)"; const p = `%${sku}%`; params.push(p, p); }
+  
+  if (start_date) { 
+    sql += " AND l.created_at >= ?"; 
+    params.push(`${start_date} 00:00:00`); 
+  }
+  if (end_date) { 
+    sql += " AND l.created_at <= ?"; 
+    params.push(`${end_date} 23:59:59`); 
+  }
+  if (sku) { 
+    sql += " AND (l.sku LIKE ? OR p.name LIKE ?)"; 
+    const p = `%${sku}%`; 
+    params.push(p, p); 
+  }
+  
   sql += " ORDER BY l.created_at DESC LIMIT 200";
+  
   try {
     const [rows] = await pool.query(sql, params);
     res.json(rows);
-  } catch (error) { handleError(res, error); }
+  } catch (error) { 
+    console.error("SQL ERROR in /api/stock-logs:", error.message);
+    res.status(500).json({ error: `ไม่สามารถโหลดประวัติได้: ${error.message}` });
+  }
 });
 
 app.delete("/api/products/:sku", authenticateToken, async (req, res) => {
