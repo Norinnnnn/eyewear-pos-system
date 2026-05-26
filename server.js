@@ -204,13 +204,13 @@ async function initializeDatabase() {
     stock_logs: `
       CREATE TABLE IF NOT EXISTS stock_logs (
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        sku VARCHAR(50),
+        sku VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
         user_id INT UNSIGNED,
         old_stock INT DEFAULT 0,
         new_stock INT DEFAULT 0,
         added_qty INT DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );`
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`
   };
 
   const connection = await pool.getConnection();
@@ -224,10 +224,11 @@ async function initializeDatabase() {
       }
     }
 
-    // Try to add payment_method column if missing (legacy support)
+    // Fix collation for existing stock_logs if it was created with wrong default
     try {
-      await connection.query("ALTER TABLE sales ADD COLUMN payment_method ENUM('cash', 'qr', 'transfer') DEFAULT 'cash' AFTER discount;");
-    } catch (e) {}
+      await connection.query("ALTER TABLE stock_logs CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
+      await connection.query("ALTER TABLE stock_logs MODIFY sku VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
+    } catch (e) { console.warn("Collation fix skipped:", e.message); }
 
     // Insert Defaults
     await connection.query("INSERT IGNORE INTO settings (id, low_stock_threshold) VALUES (1, 5);");
