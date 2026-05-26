@@ -209,17 +209,27 @@ async function initializeDatabase() {
         old_stock INT NOT NULL,
         new_stock INT NOT NULL,
         added_qty INT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (sku) REFERENCES products(sku) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );`
   };
 
   const connection = await pool.getConnection();
   try {
-    for (const sql of Object.values(tables)) {
-      await connection.query(sql);
+    for (const [name, sql] of Object.entries(tables)) {
+      try {
+        await connection.query(sql);
+      } catch (err) {
+        console.error(`Error creating table ${name}:`, err.message);
+      }
     }
+
+    // Try to add foreign keys separately so they don't block table creation
+    try {
+      await connection.query("ALTER TABLE stock_logs ADD CONSTRAINT fk_stock_sku FOREIGN KEY (sku) REFERENCES products(sku) ON DELETE CASCADE;");
+    } catch (e) { console.warn("Could not add fk_stock_sku:", e.message); }
+    try {
+      await connection.query("ALTER TABLE stock_logs ADD CONSTRAINT fk_stock_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;");
+    } catch (e) { console.warn("Could not add fk_stock_user:", e.message); }
 
     // Add payment_method column to existing sales table if missing
     try {
