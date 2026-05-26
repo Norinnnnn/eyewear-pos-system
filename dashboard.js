@@ -111,14 +111,13 @@ async function switchPage(pageName, button) {
   const targetPage = document.getElementById(pageName);
   if (targetPage) { targetPage.classList.add("active"); targetPage.style.display = "block"; }
   if (button) button.classList.add("active");
-  const titleMap = { home: "แดชบอร์ด", pos: "ขายหน้าร้าน", inventory: "คลังสินค้า", "stock-logs": "ประวัติคลังสินค้า", reports: "รายงาน", users: "จัดการผู้ใช้", promotions: "จัดการโปรโมชั่น", customers: "จัดการลูกค้า" };
+  const titleMap = { home: "แดชบอร์ด", pos: "ขายหน้าร้าน", inventory: "คลังสินค้า", reports: "รายงาน", users: "จัดการผู้ใช้", promotions: "จัดการโปรโมชั่น", customers: "จัดการลูกค้า" };
   const titleEl = document.getElementById("page-title");
   if (titleEl) titleEl.textContent = titleMap[pageName] || "แดชบอร์ด";
   if (pageName !== "home") await loadData();
   if (pageName === "home") renderHome();
   else if (pageName === "pos") renderPOS();
   else if (pageName === "inventory") renderInventory();
-  else if (pageName === "stock-logs") renderStockLogs();
   else if (pageName === "reports") renderReports();
   else if (pageName === "users") renderUsers();
   else if (pageName === "promotions") renderPromotions();
@@ -565,6 +564,7 @@ function renderInventory() {
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap:15px; flex-wrap:wrap;">
       <div style="display: flex; gap: 10px;">
         <button onclick="openAddProductModal()" class="btn-primary" style="display:flex; align-items:center; gap:8px;"><i class="fas fa-plus-circle"></i> เพิ่มสินค้า</button>
+        <button onclick="openStockLogsModal()" class="btn-secondary" style="display:flex; align-items:center; gap:8px; background:#f8fafc; color:#64748b; border:1px solid #e2e8f0;"><i class="fas fa-history"></i> ประวัติการปรับสต็อก</button>
       </div>
       <div style="flex:1; max-width:400px; position:relative;">
         <input type="text" id="inv-search" placeholder="ค้นหาชื่อหรือรหัสสินค้า..." oninput="inventorySearchQuery=this.value; renderInventoryRows();" style="width: 100%; padding-left:40px; border-radius:12px; border:1px solid #ddd;" />
@@ -686,43 +686,58 @@ function renderReports() {
 }
 async function filterReports() { const start = document.getElementById("rep-start").value, end = document.getElementById("rep-end").value, q = document.getElementById("rep-search").value; let url = `/api/sales?`; if (start) url += `start_date=${start}&`; if (end) url += `end_date=${end}&`; if (q) url += `search=${encodeURIComponent(q)}&`; sales = await fetchJson(url); renderReports(); }
 
-// --- Stock Logs Page ---
+// --- Stock Logs Modal ---
 
-async function renderStockLogs() {
-  const container = document.getElementById("stock-logs");
-  container.innerHTML = `
-    <div class="card">
-      <h2 style="display: flex; align-items: center; gap: 10px;"><i class="fas fa-search"></i> ค้นหาประวัติการปรับสต็อก</h2>
-      <div class="grid" style="grid-template-columns: 1fr 1fr 1fr auto; gap: 10px;">
-        <div style="display:flex; flex-direction:column; gap:5px;"><label style="font-size:0.8rem; color:#64748b;">เริ่มวันที่</label><input type="date" id="log-start" /></div>
-        <div style="display:flex; flex-direction:column; gap:5px;"><label style="font-size:0.8rem; color:#64748b;">ถึงวันที่</label><input type="date" id="log-end" /></div>
-        <div style="display:flex; flex-direction:column; gap:5px;"><label style="font-size:0.8rem; color:#64748b;">ค้นหาชื่อสินค้า/รหัส</label><input type="text" id="log-sku" placeholder="SKU หรือ ชื่อสินค้า..." /></div>
-        <div style="display:flex; align-items:flex-end;"><button onclick="filterStockLogs()" class="btn-primary" style="padding: 12px 30px; border-radius:12px; height:45px;"><i class="fas fa-search"></i> ค้นหา</button></div>
+function openStockLogsModal() {
+  let modal = document.getElementById("stock-logs-modal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "stock-logs-modal";
+    modal.className = "modal";
+    document.body.appendChild(modal);
+  }
+  
+  modal.innerHTML = `
+    <div class="modal-content" style="width: min(100%, 900px); max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="background:#f8fafc; border-bottom: 1px solid #e2e8f0;">
+        <h2 style="color: #475569;"><i class="fas fa-history"></i> ประวัติการปรับสต็อก</h2>
+        <button onclick="document.getElementById('stock-logs-modal').style.display='none'" class="modal-close"><i class="fas fa-times"></i></button>
       </div>
-    </div>
-    <div class="card" style="padding: 0; overflow: hidden; margin-top:20px; border:none; box-shadow:var(--shadow);">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>วัน/เวลา</th>
-              <th>สินค้า</th>
-              <th>รหัสสินค้า</th>
-              <th style="text-align: center;">สต็อกเดิม</th>
-              <th style="text-align: center;">จำนวนที่เพิ่ม</th>
-              <th style="text-align: center;">สต็อกใหม่</th>
-              <th>ผู้ดำเนินการ</th>
-            </tr>
-          </thead>
-          <tbody id="log-tbody">
-            <tr><td colspan="7" style="text-align:center; padding:40px; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> กำลังโหลดข้อมูล...</td></tr>
-          </tbody>
-        </table>
+      <div style="padding: 20px; background: #fff; border-bottom: 1px solid #f1f5f9;">
+        <div class="grid" style="grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: end;">
+          <div style="display:flex; flex-direction:column; gap:5px;"><label style="font-size:0.8rem; color:#64748b;">เริ่มวันที่</label><input type="date" id="log-start" style="margin:0;" /></div>
+          <div style="display:flex; flex-direction:column; gap:5px;"><label style="font-size:0.8rem; color:#64748b;">ถึงวันที่</label><input type="date" id="log-end" style="margin:0;" /></div>
+          <div style="display:flex; flex-direction:column; gap:5px;"><label style="font-size:0.8rem; color:#64748b;">ค้นหาชื่อสินค้า/รหัส</label><input type="text" id="log-sku" placeholder="SKU หรือ ชื่อสินค้า..." style="margin:0;" /></div>
+          <button onclick="filterStockLogs()" class="btn-primary" style="padding: 10px 25px; border-radius:10px; height:42px;"><i class="fas fa-search"></i> ค้นหา</button>
+        </div>
+      </div>
+      <div style="flex: 1; overflow-y: auto; padding: 0;">
+        <div class="table-wrap" style="margin:0; border:none; border-radius:0;">
+          <table style="width: 100%;">
+            <thead style="position: sticky; top: 0; z-index: 10; background: #f8fafc; box-shadow: 0 1px 0 #e2e8f0;">
+              <tr>
+                <th>วัน/เวลา</th>
+                <th>สินค้า</th>
+                <th>รหัสสินค้า</th>
+                <th style="text-align: center;">สต็อกเดิม</th>
+                <th style="text-align: center;">จำนวนที่เปลี่ยน</th>
+                <th style="text-align: center;">สต็อกใหม่</th>
+                <th>ผู้ดำเนินการ</th>
+              </tr>
+            </thead>
+            <tbody id="log-tbody">
+              <tr><td colspan="7" style="text-align:center; padding:40px; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> กำลังโหลดข้อมูล...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 15px 20px; background: #f9fafb; text-align: right;">
+        <button onclick="document.getElementById('stock-logs-modal').style.display='none'" style="background: #e2e8f0; color: #475569; border:none; padding:10px 25px; border-radius:10px; cursor:pointer; font-weight:600;">ปิดหน้าต่าง</button>
       </div>
     </div>
   `;
-  
-  await filterStockLogs();
+  modal.style.display = "flex";
+  filterStockLogs();
 }
 
 async function filterStockLogs() {
@@ -730,6 +745,9 @@ async function filterStockLogs() {
   const end = document.getElementById("log-end")?.value;
   const sku = document.getElementById("log-sku")?.value;
   
+  const tbody = document.getElementById("log-tbody");
+  if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:40px; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> กำลังโหลดข้อมูล...</td></tr>`;
+
   let url = `/api/stock-logs?`;
   if (start) url += `start_date=${start}&`;
   if (end) url += `end_date=${end}&`;
@@ -737,7 +755,6 @@ async function filterStockLogs() {
   
   try {
     const logs = await fetchJson(url);
-    const tbody = document.getElementById("log-tbody");
     if (!tbody) return;
     
     if (logs.length === 0) {

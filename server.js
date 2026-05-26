@@ -114,7 +114,11 @@ async function createDatabaseIfNotExists() {
 }
 
 async function initializeDatabase() {
-  await createDatabaseIfNotExists();
+  try {
+    await createDatabaseIfNotExists();
+  } catch (e) {
+    console.warn("Could not create database (expected on some hosted providers like Aiven). Continuing...");
+  }
 
   const tables = {
     users: `
