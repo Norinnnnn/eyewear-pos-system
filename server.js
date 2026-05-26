@@ -206,9 +206,9 @@ async function initializeDatabase() {
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         sku VARCHAR(50),
         user_id INT UNSIGNED,
-        old_stock INT NOT NULL,
-        new_stock INT NOT NULL,
-        added_qty INT NOT NULL,
+        old_stock INT DEFAULT 0,
+        new_stock INT DEFAULT 0,
+        added_qty INT DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );`
   };
@@ -218,23 +218,16 @@ async function initializeDatabase() {
     for (const [name, sql] of Object.entries(tables)) {
       try {
         await connection.query(sql);
+        console.log(`Table ${name} checked/created.`);
       } catch (err) {
-        console.error(`Error creating table ${name}:`, err.message);
+        console.error(`Error with table ${name}:`, err.message);
       }
     }
 
-    // Try to add foreign keys separately so they don't block table creation
-    try {
-      await connection.query("ALTER TABLE stock_logs ADD CONSTRAINT fk_stock_sku FOREIGN KEY (sku) REFERENCES products(sku) ON DELETE CASCADE;");
-    } catch (e) { console.warn("Could not add fk_stock_sku:", e.message); }
-    try {
-      await connection.query("ALTER TABLE stock_logs ADD CONSTRAINT fk_stock_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;");
-    } catch (e) { console.warn("Could not add fk_stock_user:", e.message); }
-
-    // Add payment_method column to existing sales table if missing
+    // Try to add payment_method column if missing (legacy support)
     try {
       await connection.query("ALTER TABLE sales ADD COLUMN payment_method ENUM('cash', 'qr', 'transfer') DEFAULT 'cash' AFTER discount;");
-    } catch (e) { /* Column likely exists */ }
+    } catch (e) {}
 
     // Insert Defaults
     await connection.query("INSERT IGNORE INTO settings (id, low_stock_threshold) VALUES (1, 5);");
@@ -339,12 +332,12 @@ app.post("/api/products", authenticateToken, upload.single("image"), async (req,
       "INSERT INTO products (sku, name, category, price, stock, image, cost, color, prescription) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [sku, name, category, price, stock, image, cost || 0, color || "", prescription || ""]
     );
-    // Log initial stock
+    // Log initial stock (Non-blocking)
     if (parseInt(stock) > 0) {
-      await connection.query(
+      pool.query(
         "INSERT INTO stock_logs (sku, user_id, old_stock, new_stock, added_qty) VALUES (?, ?, ?, ?, ?)",
         [sku, req.user.id, 0, stock, stock]
-      );
+      ).catch(err => console.error("Error logging initial stock:", err.message));
     }
     await connection.commit();
     res.status(201).json({ message: "สำเร็จ" });
@@ -381,18 +374,20 @@ app.put("/api/products/:sku", authenticateToken, upload.single("image"), async (
     }
     await connection.query(sql, params);
 
-    // 2. Log if stock changed
+    // 2. Log if stock changed (Non-blocking)
     if (parseInt(stock) !== oldStock) {
-      await connection.query(
+      pool.query(
         "INSERT INTO stock_logs (sku, user_id, old_stock, new_stock, added_qty) VALUES (?, ?, ?, ?, ?)",
         [newSku || oldSku, req.user.id, oldStock, stock, parseInt(stock) - oldStock]
-      );
+      ).catch(err => console.error("Error logging stock change:", err.message));
     }
 
     // 3. Cascade SKU change if it changed
     if (newSku && newSku !== oldSku) {
       await connection.query("UPDATE sales SET sku = ? WHERE sku = ?", [newSku, oldSku]);
-      await connection.query("UPDATE stock_logs SET sku = ? WHERE sku = ?", [newSku, oldSku]);
+      try {
+        await connection.query("UPDATE stock_logs SET sku = ? WHERE sku = ?", [newSku, oldSku]);
+      } catch (e) { console.error("Could not cascade SKU change to stock_logs:", e.message); }
     }
 
     await connection.commit();
@@ -422,10 +417,12 @@ app.post("/api/products/:sku/add-stock", authenticateToken, async (req, res) => 
     const newStock = oldStock + qty;
 
     await connection.query("UPDATE products SET stock = ? WHERE sku = ?", [newStock, req.params.sku]);
-    await connection.query(
+    
+    // Log change (Non-blocking)
+    pool.query(
       "INSERT INTO stock_logs (sku, user_id, old_stock, new_stock, added_qty) VALUES (?, ?, ?, ?, ?)",
       [req.params.sku, req.user.id, oldStock, newStock, qty]
-    );
+    ).catch(err => console.error("Error logging add-stock:", err.message));
 
     await connection.commit();
     res.json({ message: "เพิ่มสต็อกสำเร็จ" });
