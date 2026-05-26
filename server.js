@@ -204,13 +204,13 @@ async function initializeDatabase() {
     stock_logs: `
       CREATE TABLE IF NOT EXISTS stock_logs (
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        sku VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+        sku VARCHAR(50),
         user_id INT UNSIGNED,
         old_stock INT DEFAULT 0,
         new_stock INT DEFAULT 0,
         added_qty INT DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`
+      );`
   };
 
   const connection = await pool.getConnection();
@@ -224,11 +224,23 @@ async function initializeDatabase() {
       }
     }
 
-    // Fix collation for existing stock_logs if it was created with wrong default
+    // Migration: Sync collation of stock_logs with products table to fix "Illegal mix of collations"
     try {
-      await connection.query("ALTER TABLE stock_logs CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
-      await connection.query("ALTER TABLE stock_logs MODIFY sku VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
-    } catch (e) { console.warn("Collation fix skipped:", e.message); }
+      // 1. Get collation of products table
+      const [rows] = await connection.query("SHOW TABLE STATUS WHERE Name = 'products'");
+      if (rows.length > 0) {
+        const targetCollation = rows[0].Collation;
+        const targetCharset = targetCollation.split('_')[0];
+        console.log(`Target collation from products table: ${targetCollation}`);
+        
+        // 2. Apply it to stock_logs
+        await connection.query(`ALTER TABLE stock_logs CONVERT TO CHARACTER SET ${targetCharset} COLLATE ${targetCollation};`);
+        await connection.query(`ALTER TABLE stock_logs MODIFY sku VARCHAR(50) CHARACTER SET ${targetCharset} COLLATE ${targetCollation};`);
+        console.log("Collation sync for stock_logs completed.");
+      }
+    } catch (e) { 
+      console.warn("Collation sync failed (might be expected if table doesn't exist yet):", e.message); 
+    }
 
     // Insert Defaults
     await connection.query("INSERT IGNORE INTO settings (id, low_stock_threshold) VALUES (1, 5);");
