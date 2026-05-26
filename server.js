@@ -196,6 +196,18 @@ async function initializeDatabase() {
         name VARCHAR(150) NOT NULL,
         phone VARCHAR(20) UNIQUE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );`,
+    stock_logs: `
+      CREATE TABLE IF NOT EXISTS stock_logs (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        sku VARCHAR(50),
+        user_id INT UNSIGNED,
+        old_stock INT NOT NULL,
+        new_stock INT NOT NULL,
+        added_qty INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (sku) REFERENCES products(sku) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
       );`
   };
 
@@ -306,17 +318,30 @@ app.get("/api/products", authenticateToken, async (req, res) => {
 app.post("/api/products", authenticateToken, upload.single("image"), async (req, res) => {
   const { sku, name, category, price, stock, cost, color, prescription } = req.body;
   const image = req.file ? req.file.path : null;
+  const connection = await pool.getConnection();
   try {
-    await pool.query(
+    await connection.beginTransaction();
+    await connection.query(
       "INSERT INTO products (sku, name, category, price, stock, image, cost, color, prescription) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [sku, name, category, price, stock, image, cost || 0, color || "", prescription || ""]
     );
+    // Log initial stock
+    if (parseInt(stock) > 0) {
+      await connection.query(
+        "INSERT INTO stock_logs (sku, user_id, old_stock, new_stock, added_qty) VALUES (?, ?, ?, ?, ?)",
+        [sku, req.user.id, 0, stock, stock]
+      );
+    }
+    await connection.commit();
     res.status(201).json({ message: "สำเร็จ" });
   } catch (error) {
+    await connection.rollback();
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: "รหัสสินค้านี้ (SKU) มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น" });
     }
     handleError(res, error);
+  } finally {
+    connection.release();
   }
 });
 
@@ -329,6 +354,10 @@ app.put("/api/products/:sku", authenticateToken, upload.single("image"), async (
   try {
     await connection.beginTransaction();
 
+    // 0. Get current stock for logging
+    const [current] = await connection.query("SELECT stock FROM products WHERE sku = ?", [oldSku]);
+    const oldStock = current.length > 0 ? current[0].stock : 0;
+
     // 1. Update Product details
     let sql = "UPDATE products SET sku=?, name=?, category=?, price=?, stock=?, cost=?, color=?, prescription=? WHERE sku=?";
     let params = [newSku || oldSku, name, category, price, stock, cost || 0, color || "", prescription || "", oldSku];
@@ -338,7 +367,15 @@ app.put("/api/products/:sku", authenticateToken, upload.single("image"), async (
     }
     await connection.query(sql, params);
 
-    // 2. Cascade SKU change if it changed
+    // 2. Log if stock changed
+    if (parseInt(stock) !== oldStock) {
+      await connection.query(
+        "INSERT INTO stock_logs (sku, user_id, old_stock, new_stock, added_qty) VALUES (?, ?, ?, ?, ?)",
+        [newSku || oldSku, req.user.id, oldStock, stock, parseInt(stock) - oldStock]
+      );
+    }
+
+    // 3. Cascade SKU change if it changed
     if (newSku && newSku !== oldSku) {
       await connection.query("UPDATE sales SET sku = ? WHERE sku = ?", [newSku, oldSku]);
       await connection.query("UPDATE stock_logs SET sku = ? WHERE sku = ?", [newSku, oldSku]);
@@ -358,14 +395,47 @@ app.put("/api/products/:sku", authenticateToken, upload.single("image"), async (
 });
 
 app.post("/api/products/:sku/add-stock", authenticateToken, async (req, res) => {
-  console.log(`Add stock request received for SKU: ${req.params.sku}, Quantity: ${req.body.quantity}`);
   const { quantity } = req.body;
   const qty = parseInt(quantity);
   if (isNaN(qty) || qty <= 0) return res.status(400).json({ error: "จำนวนไม่ถูกต้อง" });
   
+  const connection = await pool.getConnection();
   try {
-    await pool.query("UPDATE products SET stock = stock + ? WHERE sku = ?", [qty, req.params.sku]);
+    await connection.beginTransaction();
+    const [current] = await connection.query("SELECT stock FROM products WHERE sku = ?", [req.params.sku]);
+    if (current.length === 0) throw new Error("ไม่พบสินค้า");
+    const oldStock = current[0].stock;
+    const newStock = oldStock + qty;
+
+    await connection.query("UPDATE products SET stock = ? WHERE sku = ?", [newStock, req.params.sku]);
+    await connection.query(
+      "INSERT INTO stock_logs (sku, user_id, old_stock, new_stock, added_qty) VALUES (?, ?, ?, ?, ?)",
+      [req.params.sku, req.user.id, oldStock, newStock, qty]
+    );
+
+    await connection.commit();
     res.json({ message: "เพิ่มสต็อกสำเร็จ" });
+  } catch (error) {
+    await connection.rollback();
+    handleError(res, error);
+  } finally {
+    connection.release();
+  }
+});
+
+app.get("/api/stock-logs", authenticateToken, async (req, res) => {
+  const { start_date, end_date, sku } = req.query;
+  let sql = `SELECT l.*, p.name as product_name, u.name as user_name FROM stock_logs l 
+             LEFT JOIN products p ON l.sku = p.sku 
+             LEFT JOIN users u ON l.user_id = u.id WHERE 1=1`;
+  const params = [];
+  if (start_date) { sql += " AND DATE(l.created_at) >= ?"; params.push(start_date); }
+  if (end_date) { sql += " AND DATE(l.created_at) <= ?"; params.push(end_date); }
+  if (sku) { sql += " AND (l.sku LIKE ? OR p.name LIKE ?)"; const p = `%${sku}%`; params.push(p, p); }
+  sql += " ORDER BY l.created_at DESC LIMIT 200";
+  try {
+    const [rows] = await pool.query(sql, params);
+    res.json(rows);
   } catch (error) { handleError(res, error); }
 });
 

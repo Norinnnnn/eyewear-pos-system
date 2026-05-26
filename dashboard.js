@@ -6,6 +6,7 @@ let promotions = [];
 let customers = [];
 let productTypes = [];
 let sales = [];
+let stockLogs = [];
 let cart = [];
 let settings = { low_stock_threshold: 5 };
 
@@ -110,13 +111,14 @@ async function switchPage(pageName, button) {
   const targetPage = document.getElementById(pageName);
   if (targetPage) { targetPage.classList.add("active"); targetPage.style.display = "block"; }
   if (button) button.classList.add("active");
-  const titleMap = { home: "แดชบอร์ด", pos: "ขายหน้าร้าน", inventory: "คลังสินค้า", reports: "รายงาน", users: "จัดการผู้ใช้", promotions: "จัดการโปรโมชั่น", customers: "จัดการลูกค้า" };
+  const titleMap = { home: "แดชบอร์ด", pos: "ขายหน้าร้าน", inventory: "คลังสินค้า", "stock-logs": "ประวัติคลังสินค้า", reports: "รายงาน", users: "จัดการผู้ใช้", promotions: "จัดการโปรโมชั่น", customers: "จัดการลูกค้า" };
   const titleEl = document.getElementById("page-title");
   if (titleEl) titleEl.textContent = titleMap[pageName] || "แดชบอร์ด";
   if (pageName !== "home") await loadData();
   if (pageName === "home") renderHome();
   else if (pageName === "pos") renderPOS();
   else if (pageName === "inventory") renderInventory();
+  else if (pageName === "stock-logs") renderStockLogs();
   else if (pageName === "reports") renderReports();
   else if (pageName === "users") renderUsers();
   else if (pageName === "promotions") renderPromotions();
@@ -683,6 +685,83 @@ function renderReports() {
   `;
 }
 async function filterReports() { const start = document.getElementById("rep-start").value, end = document.getElementById("rep-end").value, q = document.getElementById("rep-search").value; let url = `/api/sales?`; if (start) url += `start_date=${start}&`; if (end) url += `end_date=${end}&`; if (q) url += `search=${encodeURIComponent(q)}&`; sales = await fetchJson(url); renderReports(); }
+
+// --- Stock Logs Page ---
+
+async function renderStockLogs() {
+  const container = document.getElementById("stock-logs");
+  container.innerHTML = `
+    <div class="card">
+      <h2 style="display: flex; align-items: center; gap: 10px;"><i class="fas fa-search"></i> ค้นหาประวัติการปรับสต็อก</h2>
+      <div class="grid" style="grid-template-columns: 1fr 1fr 1fr auto; gap: 10px;">
+        <div style="display:flex; flex-direction:column; gap:5px;"><label style="font-size:0.8rem; color:#64748b;">เริ่มวันที่</label><input type="date" id="log-start" /></div>
+        <div style="display:flex; flex-direction:column; gap:5px;"><label style="font-size:0.8rem; color:#64748b;">ถึงวันที่</label><input type="date" id="log-end" /></div>
+        <div style="display:flex; flex-direction:column; gap:5px;"><label style="font-size:0.8rem; color:#64748b;">ค้นหาชื่อสินค้า/รหัส</label><input type="text" id="log-sku" placeholder="SKU หรือ ชื่อสินค้า..." /></div>
+        <div style="display:flex; align-items:flex-end;"><button onclick="filterStockLogs()" class="btn-primary" style="padding: 12px 30px; border-radius:12px; height:45px;"><i class="fas fa-search"></i> ค้นหา</button></div>
+      </div>
+    </div>
+    <div class="card" style="padding: 0; overflow: hidden; margin-top:20px; border:none; box-shadow:var(--shadow);">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>วัน/เวลา</th>
+              <th>สินค้า</th>
+              <th>รหัสสินค้า</th>
+              <th style="text-align: center;">สต็อกเดิม</th>
+              <th style="text-align: center;">จำนวนที่เพิ่ม</th>
+              <th style="text-align: center;">สต็อกใหม่</th>
+              <th>ผู้ดำเนินการ</th>
+            </tr>
+          </thead>
+          <tbody id="log-tbody">
+            <tr><td colspan="7" style="text-align:center; padding:40px; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> กำลังโหลดข้อมูล...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  
+  await filterStockLogs();
+}
+
+async function filterStockLogs() {
+  const start = document.getElementById("log-start")?.value;
+  const end = document.getElementById("log-end")?.value;
+  const sku = document.getElementById("log-sku")?.value;
+  
+  let url = `/api/stock-logs?`;
+  if (start) url += `start_date=${start}&`;
+  if (end) url += `end_date=${end}&`;
+  if (sku) url += `sku=${encodeURIComponent(sku)}&`;
+  
+  try {
+    const logs = await fetchJson(url);
+    const tbody = document.getElementById("log-tbody");
+    if (!tbody) return;
+    
+    if (logs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:40px; color:#94a3b8;">ไม่พบข้อมูลประวัติในช่วงเวลาที่กำหนด</td></tr>`;
+      return;
+    }
+    
+    tbody.innerHTML = logs.map(l => `
+      <tr>
+        <td>${new Date(l.created_at).toLocaleString("th-TH")}</td>
+        <td style="font-weight:600;">${l.product_name || '-'}</td>
+        <td style="font-family:monospace; font-weight:700;">${l.sku}</td>
+        <td style="text-align:center; color:#64748b;">${l.old_stock}</td>
+        <td style="text-align:center; font-weight:800; color:${l.added_qty >= 0 ? '#059669' : '#ef4444'};">
+          ${l.added_qty >= 0 ? '+' : ''}${l.added_qty}
+        </td>
+        <td style="text-align:center; font-weight:800; color:#7c3aed;">${l.new_stock}</td>
+        <td><i class="fas fa-user-circle" style="color:#94a3b8; margin-right:5px;"></i> ${l.user_name || 'ระบบ'}</td>
+      </tr>
+    `).join("");
+  } catch (error) {
+    showToast("ไม่สามารถโหลดประวัติได้", "error");
+  }
+}
 
 // --- Users & Promotions ---
 function renderUsers() {
