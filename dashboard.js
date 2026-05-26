@@ -377,19 +377,27 @@ function addToCart(sku) { const p = products.find(x => x.sku === sku); if (!p) r
 function renderCart() {
   let sub = 0, disc = 0, count = 0;
   const html = cart.map((item, i) => {
-    const promo = promotions.filter(p => p.is_active).find(pr => { 
-      const skus = pr.applicable_skus ? pr.applicable_skus.split(",").map(s => s.trim()) : []; 
-      return (skus.length === 0 || skus.includes(item.sku)) && item.qty >= pr.min_qty; 
-    });
-    
-    let lineDisc = 0;
-    if (promo) {
-      if (promo.discount_type === "fixed") {
-        lineDisc = Math.floor(item.qty / promo.min_qty) * Number(promo.discount_value);
-      } else {
-        lineDisc = (item.price * Number(promo.discount_value) / 100) * item.qty;
+    // Find all applicable promotions
+    const applicablePromos = promotions.filter(p => p.is_active).map(pr => {
+      const skus = pr.applicable_skus ? pr.applicable_skus.split(",").map(s => s.trim()) : [];
+      if ((skus.length === 0 || skus.includes(item.sku)) && item.qty >= pr.min_qty) {
+        let promoDisc = 0;
+        if (pr.discount_type === "fixed") {
+          promoDisc = Math.floor(item.qty / pr.min_qty) * Number(pr.discount_value);
+        } else {
+          promoDisc = (item.price * Number(pr.discount_value) / 100) * item.qty;
+        }
+        return { ...pr, calculatedDisc: promoDisc };
       }
-    }
+      return null;
+    }).filter(p => p !== null);
+
+    // Pick the best promotion (maximum discount)
+    const bestPromo = applicablePromos.length > 0 
+      ? applicablePromos.reduce((prev, current) => (prev.calculatedDisc > current.calculatedDisc) ? prev : current)
+      : null;
+    
+    let lineDisc = bestPromo ? bestPromo.calculatedDisc : 0;
 
     sub += item.price * item.qty; 
     disc += lineDisc; 
@@ -416,6 +424,7 @@ function renderCart() {
           <button onclick="changeCartQty(${i}, 1)" style="width: 34px; height: 34px; border-radius: 10px; border: none; background: white; color: #7c3aed; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" onmouseover="this.style.background='#f5f3ff'" onmouseout="this.style.background='white'"><i class="fas fa-plus" style="font-size: 0.8rem;"></i></button>
         </div>
         <div style="text-align: right;">
+          ${bestPromo ? `<div style="font-size: 0.65rem; color: #059669; font-weight: 700; margin-bottom: 2px;">โปร: ${bestPromo.name}</div>` : ''}
           <div style="font-size: 0.7rem; color: #94a3b8; text-decoration: line-through; height: 1rem;">${lineDisc > 0 ? `฿${(item.price * item.qty).toLocaleString()}` : ''}</div>
           <div style="font-weight:800; color:#7c3aed; font-size: 1.1rem;">฿${(item.price * item.qty - lineDisc).toLocaleString()}</div>
         </div>
@@ -458,23 +467,28 @@ function updateCartQty(index, newQty) {
 
 async function checkout() {
   if (cart.length === 0) return showToast("กรุณาเลือกสินค้า", "warning");
+  
   const sub = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+  const activePromos = promotions.filter(p => p.is_active);
+  
   const totalDisc = cart.reduce((sum, item) => {
-    const promo = promotions.filter(p => p.is_active).find(pr => { 
-      const skus = pr.applicable_skus ? pr.applicable_skus.split(",").map(s => s.trim()) : []; 
-      return (skus.length === 0 || skus.includes(item.sku)) && item.qty >= pr.min_qty; 
-    });
-    
-    let lineDisc = 0;
-    if (promo) {
-      if (promo.discount_type === "fixed") {
-        lineDisc = Math.floor(item.qty / promo.min_qty) * Number(promo.discount_value);
-      } else {
-        lineDisc = (item.price * Number(promo.discount_value) / 100) * item.qty;
+    const applicablePromos = activePromos.map(pr => {
+      const skus = pr.applicable_skus ? pr.applicable_skus.split(",").map(s => s.trim()) : [];
+      if ((skus.length === 0 || skus.includes(item.sku)) && item.qty >= pr.min_qty) {
+        let promoDisc = 0;
+        if (pr.discount_type === "fixed") {
+          promoDisc = Math.floor(item.qty / pr.min_qty) * Number(pr.discount_value);
+        } else {
+          promoDisc = (item.price * Number(pr.discount_value) / 100) * item.qty;
+        }
+        return promoDisc;
       }
-    }
-    return sum + lineDisc;
+      return 0;
+    });
+    const maxDisc = Math.max(0, ...applicablePromos);
+    return sum + maxDisc;
   }, 0);
+  
   const total = sub - totalDisc;
 
   let modal = document.getElementById("payment-modal"); if (!modal) { modal = document.createElement("div"); modal.id = "payment-modal"; modal.className = "modal"; document.body.appendChild(modal); }
