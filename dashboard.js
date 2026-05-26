@@ -71,7 +71,14 @@ window.fetch = async function() {
 
 async function fetchJson(url) {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`${url} error ${res.status}`);
+  if (!res.ok) {
+    let msg = `Error ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.error) msg = data.error;
+    } catch (e) {}
+    throw new Error(msg);
+  }
   return res.json();
 }
 
@@ -776,7 +783,8 @@ async function filterStockLogs() {
       </tr>
     `).join("");
   } catch (error) {
-    showToast("ไม่สามารถโหลดประวัติได้", "error");
+    showToast(error.message || "ไม่สามารถโหลดประวัติได้", "error");
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:40px; color:#ef4444;"><i class="fas fa-exclamation-triangle"></i> ${error.message}</td></tr>`;
   }
 }
 
